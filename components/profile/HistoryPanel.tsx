@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   filterChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterChipText: { fontSize: 12, fontWeight: '600', color: colors.muted },
-  filterChipTextActive: { color: '#FFFFFF' },
+  filterChipTextActive: { color: colors.onAccent },
 
   list: { flex: 1 },
   listContent: { paddingBottom: space.md },

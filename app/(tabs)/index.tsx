@@ -165,7 +165,7 @@ function QuickAction({
         pressed && styles.pressed,
       ]}>
       <View style={[styles.actionIcon, featured && styles.actionIconFeatured]}>
-        <Ionicons name={icon} size={20} color={featured ? '#FFFFFF' : colors.accent} />
+        <Ionicons name={icon} size={20} color={featured ? colors.onAccent : colors.accent} />
       </View>
       <View style={styles.actionTextCol}>
         <View style={styles.actionTitleRow}>
@@ -175,7 +175,7 @@ function QuickAction({
           <Ionicons
             name="chevron-forward"
             size={15}
-            color={featured ? 'rgba(255,255,255,0.85)' : colors.muted}
+            color={featured ? 'rgba(25,18,4,0.7)' : colors.muted}
           />
         </View>
         <Text style={[styles.actionSubtitle, featured && styles.actionSubtitleFeatured]}>
@@ -241,13 +241,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.accentSoft,
   },
-  actionIconFeatured: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  actionIconFeatured: { backgroundColor: 'rgba(25,18,4,0.14)' },
   actionTextCol: { flex: 1 },
   actionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
-  actionLabelFeatured: { color: '#FFFFFF' },
+  actionLabelFeatured: { color: colors.onAccent },
   actionSubtitle: { marginTop: 2, fontSize: 12, color: colors.muted },
-  actionSubtitleFeatured: { color: 'rgba(255,255,255,0.85)' },
+  actionSubtitleFeatured: { color: 'rgba(25,18,4,0.75)' },
   pressed: { opacity: 0.7 },
 
   section: { gap: space.md },
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E4F6EE',
+    backgroundColor: '#15452B',
   },
   dailyMain: { flex: 1 },
   dailyTitle: { fontSize: 15, fontWeight: '700', color: colors.text },

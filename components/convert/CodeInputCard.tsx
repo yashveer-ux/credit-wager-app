@@ -42,6 +42,7 @@ const CodeInputCard = forwardRef<TextInput, Props>(function CodeInputCard(
           editable={!busy}
           placeholder="E.G. OPENAI-500"
           placeholderTextColor={colors.muted}
+          keyboardAppearance="dark"
           autoCapitalize="characters"
           autoCorrect={false}
           autoComplete="off"
@@ -74,7 +75,7 @@ const CodeInputCard = forwardRef<TextInput, Props>(function CodeInputCard(
           pressed && canRedeem && !busy && styles.pressed,
         ]}>
         {busy ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.onAccent} />
         ) : (
           <Text style={styles.redeemText}>Redeem</Text>
         )}
@@ -129,6 +130,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   redeemDisabled: { opacity: 0.4 },
-  redeemText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  redeemText: { fontSize: 16, fontWeight: '700', color: colors.onAccent },
   pressed: { opacity: 0.7 },
 });

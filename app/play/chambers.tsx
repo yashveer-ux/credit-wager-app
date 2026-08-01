@@ -318,9 +318,9 @@ function Chamber({
         : accent;
   const bg =
     state === 'safe'
-      ? '#E4F6EE'
+      ? '#15452B'
       : state === 'loss' || state === 'revealed'
-        ? '#FBE7EA'
+        ? '#3B1D18'
         : `${accent}14`;
 
   return (

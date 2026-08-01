@@ -23,7 +23,7 @@ export default function LevelCard({
     <View style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.levelBadge}>
-          <Ionicons name="star" size={18} color="#FFFFFF" />
+          <Ionicons name="star" size={18} color={colors.onAccent} />
         </View>
         <View style={styles.textCol}>
           <Text style={styles.levelLine}>
@@ -38,7 +38,12 @@ export default function LevelCard({
           <Text style={styles.streakText}>{streak}-day streak</Text>
         </View>
       </View>
-      <ProgressBar progress={xpProgress} color="#FFFFFF" trackColor="rgba(255,255,255,0.22)" height={8} />
+      <ProgressBar
+        progress={xpProgress}
+        color={colors.onAccent}
+        trackColor="rgba(25,18,4,0.2)"
+        height={8}
+      />
     </View>
   );
 }
@@ -57,20 +62,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(25,18,4,0.14)',
   },
   textCol: { flex: 1, gap: 2 },
-  levelLine: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  xpLine: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+  levelLine: { fontSize: 15, fontWeight: '700', color: colors.onAccent },
+  xpLine: { fontSize: 12, color: 'rgba(25,18,4,0.75)' },
   streakPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(25,18,4,0.14)',
     paddingHorizontal: space.sm + 2,
     paddingVertical: 6,
     borderRadius: radius.sm,
   },
   streakEmoji: { fontSize: 12 },
-  streakText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  streakText: { fontSize: 11, fontWeight: '700', color: colors.onAccent },
 });

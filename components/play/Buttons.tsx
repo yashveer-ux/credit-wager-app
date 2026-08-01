@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryLabel: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
   ghost: {
     borderRadius: radius.md,
     paddingVertical: space.md + 2,

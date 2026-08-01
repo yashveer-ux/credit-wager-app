@@ -30,6 +30,12 @@ import { colors, radius, space } from '../../lib/theme';
 
 const GAME = getGame('blackjack')!;
 
+// Playing-card faces stay ivory with classic dark/red pips regardless of the
+// app theme — real cards don't come in dark mode.
+const CARD_FACE = '#F7F3E9';
+const CARD_BLACK = '#20242B';
+const CARD_RED = '#C6403A';
+
 type Phase = 'betting' | 'dealing' | 'player-turn' | 'dealer-turn' | 'settled';
 
 type ResultState = {
@@ -517,10 +523,10 @@ function PlayingCard({
         <Ionicons name="hardware-chip" size={20} color={GAME.accent} />
       ) : (
         <>
-          <Text style={[styles.cardRank, { color: isRed ? colors.negative : colors.text }]}>
+          <Text style={[styles.cardRank, { color: isRed ? CARD_RED : CARD_BLACK }]}>
             {card.rank}
           </Text>
-          <Text style={[styles.cardSuit, { color: isRed ? colors.negative : colors.text }]}>
+          <Text style={[styles.cardSuit, { color: isRed ? CARD_RED : CARD_BLACK }]}>
             {SUIT_SYMBOL[card.suit]}
           </Text>
         </>
@@ -576,8 +582,8 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: CARD_FACE,
     alignItems: 'center',
     justifyContent: 'center',
   },

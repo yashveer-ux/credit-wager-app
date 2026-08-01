@@ -17,8 +17,8 @@ export type RedeemOutcome =
   | { status: 'already-used' }
   | { status: 'wrong-provider'; expectedProviderName: string };
 
-const SUCCESS_SOFT = '#E4F6EE';
-const DANGER_SOFT = '#FBEAE8';
+const SUCCESS_SOFT = '#15452B';
+const DANGER_SOFT = '#3B1D18';
 
 type BannerLook = {
   icon: keyof typeof Ionicons.glyphMap;

@@ -6,9 +6,9 @@ type Tone = 'neutral' | 'positive' | 'negative' | 'warning' | 'accent';
 
 const TONE_COLORS: Record<Tone, { bg: string; fg: string }> = {
   neutral: { bg: colors.skeleton, fg: colors.muted },
-  positive: { bg: '#E4F6EE', fg: colors.positive },
-  negative: { bg: '#FBE7EA', fg: colors.negative },
-  warning: { bg: '#FDF1DC', fg: '#B7791F' },
+  positive: { bg: '#15452B', fg: colors.positive },
+  negative: { bg: '#3B1D18', fg: colors.negative },
+  warning: { bg: '#3A3013', fg: '#DFB44A' },
   accent: { bg: colors.accentSoft, fg: colors.accent },
 };
 

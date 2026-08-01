@@ -17,7 +17,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatRelativeTime } from '../../lib/format';
-import { applyAndRecord, useUnifiedHistory } from '../../lib/ledger/ledgerStore';
+import { useUnifiedHistory } from '../../lib/ledger/ledgerStore';
 import { useBalance } from '../../lib/play/balanceStore';
 import { formatSignedTokens, formatTokens } from '../../lib/play/format';
 import { usePlayHistory } from '../../lib/play/historyStore';
@@ -26,7 +26,6 @@ import HistoryPanel, { KIND_LABEL } from './HistoryPanel';
 
 const MOCK_USERNAME = 'Yash';
 const MOCK_LEVEL = 'Level 4';
-const DEMO_WITHDRAWAL_AMOUNT = 100;
 const RECENT_HISTORY_LIMIT = 5;
 
 export function ProfileAvatarButton() {
@@ -74,16 +73,8 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
   const recentHistory = unifiedHistory.slice(0, RECENT_HISTORY_LIMIT);
 
   const handleWithdraw = () => {
-    const amount = Math.min(DEMO_WITHDRAWAL_AMOUNT, balance);
-    if (amount <= 0) {
-      Alert.alert('Demo Withdrawal', 'This is a fictional demo — there are no funds to withdraw.');
-      return;
-    }
-    applyAndRecord({ kind: 'withdrawal', label: 'Demo withdrawal', delta: -amount, status: 'demo' });
-    Alert.alert(
-      'Demo Withdrawal',
-      `This is a fictional demo — no real funds are transferred. ${formatTokens(amount)} AI Tokens were deducted from your demo balance.`
-    );
+    handleClose();
+    router.push('/withdraw' as any);
   };
 
   const handleHistory = () => setView('history');
@@ -190,11 +181,11 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Demo withdrawal"
+              accessibilityLabel="Withdraw"
               onPress={handleWithdraw}
               style={({ pressed }) => [styles.withdrawButton, pressed && styles.pressed]}>
-              <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.withdrawButtonText}>Demo Withdrawal</Text>
+              <Ionicons name="cash-outline" size={18} color={colors.onAccent} />
+              <Text style={styles.withdrawButtonText}>Withdraw</Text>
             </Pressable>
             <Text style={styles.withdrawDisclaimer}>
               Fictional demo only — no real money is ever moved.
@@ -415,7 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: space.md,
   },
-  withdrawButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  withdrawButtonText: { fontSize: 15, fontWeight: '700', color: colors.onAccent },
   withdrawDisclaimer: { fontSize: 11, color: colors.muted, textAlign: 'center', marginTop: -space.sm },
 
   emptyText: { fontSize: 13, color: colors.muted, paddingVertical: space.sm },

@@ -256,7 +256,7 @@ export default function HumanOrAiScreen() {
               <View
                 style={[
                   styles.revealBanner,
-                  { backgroundColor: reveal.correct ? '#E4F6EE' : '#FBE7EA' },
+                  { backgroundColor: reveal.correct ? '#15452B' : '#3B1D18' },
                 ]}>
                 <Text
                   style={[

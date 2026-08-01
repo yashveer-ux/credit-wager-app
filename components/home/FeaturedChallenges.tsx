@@ -128,7 +128,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardDark: {
-    backgroundColor: colors.text,
+    backgroundColor: '#1A150B',
+    borderWidth: 1,
+    borderColor: 'rgba(217,180,91,0.4)',
   },
   pressed: { opacity: 0.85 },
 
@@ -159,12 +161,12 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 11, fontWeight: '700' },
 
-  titleDark: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginTop: space.xs },
-  bodyDark: { fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 16, minHeight: 32, flex: 1 },
+  titleDark: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: space.xs },
+  bodyDark: { fontSize: 12, color: 'rgba(244,239,226,0.65)', lineHeight: 16, minHeight: 32, flex: 1 },
   darkDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.15)',
     marginVertical: space.xs + 2,
   },
-  statDark: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
+  statDark: { fontSize: 11, fontWeight: '600', color: colors.accent },
 });

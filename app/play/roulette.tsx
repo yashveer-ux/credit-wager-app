@@ -70,7 +70,9 @@ type ResultState = {
 function pocketColor(n: number): string {
   const c = colorOf(n);
   if (c === 'red') return colors.negative;
-  if (c === 'black') return colors.text;
+  // A literal near-black: `colors.text` is ivory on the casino theme, and
+  // roulette's "black" pockets must stay black regardless of theme.
+  if (c === 'black') return '#24272E';
   return colors.positive;
 }
 

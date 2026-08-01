@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
 
   claimable: { backgroundColor: colors.accent },
-  claimableText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  claimableText: { fontSize: 12, fontWeight: '700', color: colors.onAccent },
 
   claimed: { backgroundColor: 'transparent' },
   claimedText: { fontSize: 12, fontWeight: '600', color: colors.muted },
