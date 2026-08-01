@@ -211,6 +211,19 @@ export default function HumanOrAiScreen() {
           <>
             <LadderStrip correctCount={correctCount} />
 
+            <View style={styles.ladderMetaRow}>
+              <Text style={styles.ladderMeta}>
+                {bankedMultiplier !== null
+                  ? `Banked ${formatMultiplier(bankedMultiplier)}`
+                  : 'No streak yet'}
+              </Text>
+              {nextMultiplier !== null ? (
+                <Text style={styles.ladderMeta}>
+                  Next correct: {formatMultiplier(nextMultiplier)}
+                </Text>
+              ) : null}
+            </View>
+
             <View style={styles.roundHeaderRow}>
               <Chip label={currentItem.category} tone="neutral" />
               <Text style={styles.roundCounter}>
@@ -297,6 +310,7 @@ export default function HumanOrAiScreen() {
           title={modal.title}
           subtitle={modal.subtitle}
           delta={modal.delta}
+          wager={wager}
           balanceAfter={modal.balanceAfter}
           primaryLabel="Play again"
           onPrimary={resetToSetup}
@@ -346,6 +360,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.skeleton,
   },
+  ladderMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -space.sm,
+  },
+  ladderMeta: { fontSize: 12, fontWeight: '600', color: colors.muted },
 
   roundHeaderRow: {
     flexDirection: 'row',

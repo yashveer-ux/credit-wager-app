@@ -1,6 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Dimensions,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -14,6 +22,15 @@ import { colors, radius, space } from '../../lib/theme';
 
 const DAILY_GOAL = 3;
 const DAILY_REWARD_LABEL = '+250';
+
+// Size the five game tiles to exactly fill the row on the current screen, so
+// no tile or label is cut off mid-word at the screen edge.
+const GAME_TILE_GAP = space.sm + 2;
+const GAME_TILE_WIDTH = Math.floor(
+  (Dimensions.get('window').width - space.lg * 2 - GAME_TILE_GAP * 4) / 5
+);
+const GAME_CHIP_SIZE = GAME_TILE_WIDTH - 6;
+const GAME_ART_SIZE = GAME_CHIP_SIZE - 12;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -71,10 +88,7 @@ export default function HomeScreen() {
       </View>
 
       <Section title="Games" onViewAll={() => router.push('/play')}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.gamesRow}>
+        <View style={styles.gamesRow}>
           {GAMES.map((game) => (
             <Pressable
               key={game.id}
@@ -83,14 +97,14 @@ export default function HomeScreen() {
               onPress={() => router.push(game.route as any)}
               style={({ pressed }) => [styles.gameTile, pressed && styles.pressed]}>
               <View style={[styles.gameIcon, { backgroundColor: game.accentSoft }]}>
-                <GameIcon gameId={game.id} size={38} />
+                <GameIcon gameId={game.id} size={GAME_ART_SIZE} />
               </View>
               <Text style={styles.gameLabel} numberOfLines={2}>
                 {game.name}
               </Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       </Section>
 
       <FeaturedChallenges />
@@ -242,11 +256,11 @@ const styles = StyleSheet.create({
   viewAllRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   viewAllText: { fontSize: 13, fontWeight: '600', color: colors.muted },
 
-  gamesRow: { flexDirection: 'row', gap: space.md, paddingRight: space.sm },
-  gameTile: { width: 76, alignItems: 'center', gap: space.sm },
+  gamesRow: { flexDirection: 'row', gap: GAME_TILE_GAP },
+  gameTile: { width: GAME_TILE_WIDTH, alignItems: 'center', gap: space.sm },
   gameIcon: {
-    width: 60,
-    height: 60,
+    width: GAME_CHIP_SIZE,
+    height: GAME_CHIP_SIZE,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',

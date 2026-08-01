@@ -8,7 +8,7 @@ import ResultModal, { type ResultOutcome } from '../../components/play/ResultMod
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
 import { crashIntensity, displayedMultiplierAtElapsed } from '../../lib/play/crashCurve';
-import { formatMultiplier } from '../../lib/play/format';
+import { formatMultiplier, formatSignedTokens, formatTokens } from '../../lib/play/format';
 import { getGame } from '../../lib/play/games';
 import { haptics } from '../../lib/play/haptics';
 import { recordRound } from '../../lib/play/historyStore';
@@ -33,6 +33,7 @@ type ResultState = {
   title: string;
   subtitle: string;
   delta: number;
+  wager: number;
   balanceAfter: number;
 };
 
@@ -109,6 +110,7 @@ export default function CrashScreen() {
       title: 'System crashed',
       subtitle: `Overloaded at ${formatMultiplier(crashPoint)}`,
       delta: -wager,
+      wager,
       balanceAfter,
     });
   }
@@ -135,6 +137,7 @@ export default function CrashScreen() {
       title: 'Ejected safely',
       subtitle: `Locked in at ${formatMultiplier(locked)}`,
       delta: payout - wager,
+      wager,
       balanceAfter,
     });
   }
@@ -157,6 +160,7 @@ export default function CrashScreen() {
           elapsed={frame.elapsed}
           phase={phase}
           accent={GAME.accent}
+          wager={wager}
         />
 
         <View style={styles.controls}>
@@ -188,6 +192,7 @@ export default function CrashScreen() {
         title={result?.title ?? ''}
         subtitle={result?.subtitle}
         delta={result?.delta ?? 0}
+        wager={result?.wager}
         balanceAfter={result?.balanceAfter ?? balance}
         primaryLabel="Play again"
         onPrimary={playAgain}
@@ -209,11 +214,13 @@ function NeuralVisual({
   elapsed,
   phase,
   accent,
+  wager,
 }: {
   displayed: number;
   elapsed: number;
   phase: RoundPhase;
   accent: string;
+  wager: number;
 }) {
   const crashed = phase === 'crashed';
   const intensity = phase === 'idle' ? 0 : crashIntensity(displayed);
@@ -243,6 +250,19 @@ function NeuralVisual({
           {formatMultiplier(displayed)}
         </Text>
         {crashed ? <Text style={styles.crashedLabel}>SYSTEM CRASHED</Text> : null}
+        {phase === 'running' ? (
+          <Text style={styles.potentialLabel}>
+            Cash out now for {formatTokens(crashPayout(wager, displayed))}
+          </Text>
+        ) : phase === 'crashed' ? (
+          <Text style={[styles.potentialLabel, { color: colors.negative }]}>
+            Wager lost: {formatSignedTokens(-wager)}
+          </Text>
+        ) : phase === 'cashed' ? (
+          <Text style={[styles.potentialLabel, { color: colors.positive }]}>
+            Locked payout: {formatTokens(crashPayout(wager, displayed))}
+          </Text>
+        ) : null}
       </View>
 
       <View style={[styles.visual, { width: VISUAL_SIZE, height: VISUAL_SIZE }]}>
@@ -371,6 +391,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.negative,
     letterSpacing: 1.5,
+  },
+  potentialLabel: {
+    marginTop: space.xs,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.muted,
+    fontVariant: ['tabular-nums'],
   },
   controls: { gap: space.lg },
 });

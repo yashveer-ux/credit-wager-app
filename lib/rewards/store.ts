@@ -2,13 +2,14 @@
  * Local state for the Rewards screen. Everything here is in-memory only
  * (component-level useState via a single custom hook) — no persistence, no
  * backend, no cross-screen store. The only real side effect is crediting the
- * app's actual AI Token balance via `applyBalanceDelta` when a token reward
- * is claimed, so claims genuinely show up elsewhere in the app.
+ * app's actual AI Token balance via the unified ledger's `applyAndRecord`
+ * when a token reward is claimed, so every claim both moves the balance and
+ * shows up as a history entry elsewhere in the app.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 
-import { applyBalanceDelta } from '../play/balanceStore';
+import { applyAndRecord } from '../ledger/ledgerStore';
 import {
   ACHIEVEMENTS,
   CHECK_IN_DAYS,
@@ -102,9 +103,10 @@ export function useRewards() {
     });
   }, []);
 
+  /** Credits tokens + writes the matching ledger/history entry atomically. */
   const claimReward = useCallback(
-    (rewardTokens: number) => {
-      applyBalanceDelta(rewardTokens);
+    (label: string, rewardTokens: number) => {
+      applyAndRecord({ kind: 'reward', label, delta: rewardTokens });
       grantXp(rewardTokens);
     },
     [grantXp]
@@ -126,8 +128,8 @@ export function useRewards() {
 
   const claimToday = useCallback(() => {
     if (todayClaimed) return;
-    const reward = CHECK_IN_DAYS[TODAY_INDEX].rewardTokens;
-    claimReward(reward);
+    const today = CHECK_IN_DAYS[TODAY_INDEX];
+    claimReward(`Daily check-in · ${today.label}`, today.rewardTokens);
     setTodayClaimed(true);
   }, [todayClaimed, claimReward]);
 
@@ -147,7 +149,7 @@ export function useRewards() {
     (id: string) => {
       const mission = missionState.find((m) => m.id === id);
       if (!mission || claimedMissionIds.has(id) || mission.progress < mission.target) return;
-      claimReward(mission.rewardTokens);
+      claimReward(`Mission: ${mission.title}`, mission.rewardTokens);
       setClaimedMissionIds((prev) => new Set(prev).add(id));
     },
     [missionState, claimedMissionIds, claimReward]
@@ -170,7 +172,7 @@ export function useRewards() {
       const challenge = weeklyState.find((c) => c.id === id);
       if (!challenge || claimedWeeklyIds.has(id) || challenge.progress < challenge.target) return;
       if (challenge.requiresLevel && level < challenge.requiresLevel) return;
-      claimReward(challenge.rewardTokens);
+      claimReward(`Weekly: ${challenge.title}`, challenge.rewardTokens);
       setClaimedWeeklyIds((prev) => new Set(prev).add(id));
     },
     [weeklyState, claimedWeeklyIds, claimReward, level]
@@ -196,7 +198,7 @@ export function useRewards() {
     (id: string) => {
       const milestone = MILESTONES.find((m) => m.id === id);
       if (!milestone || claimedMilestoneIds.has(id) || gamesPlayed < milestone.target) return;
-      claimReward(milestone.rewardTokens);
+      claimReward(`Milestone: ${milestone.title}`, milestone.rewardTokens);
       setClaimedMilestoneIds((prev) => new Set(prev).add(id));
     },
     [claimedMilestoneIds, claimReward, gamesPlayed]

@@ -40,7 +40,7 @@ export default function PlayLobbyScreen() {
       style={styles.screen}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + space.lg, paddingBottom: space.xxl },
+        { paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.xxl },
       ]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Play</Text>

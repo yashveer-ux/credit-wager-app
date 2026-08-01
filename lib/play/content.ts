@@ -186,4 +186,36 @@ export const TURING_BET_CONTENT: TuringBetItem[] = [
     isAI: false,
     explanation: 'A single, specific, slightly self-deprecating anecdote used as an entire bio — an unusual but very human structural choice.',
   },
+  {
+    id: 'bio-3',
+    category: 'Bio',
+    text: 'Results-driven visionary committed to empowering teams, fostering growth, and delivering excellence at every touchpoint of the journey.',
+    isAI: true,
+    explanation:
+      '"Results-driven," "empowering," "every touchpoint" — a chain of interchangeable buzzwords with no name, role, or verifiable fact anywhere.',
+  },
+  {
+    id: 'bio-4',
+    category: 'Bio',
+    text: 'Third-generation beekeeper, first-generation spreadsheet enjoyer. The bees do not respect my pivot tables.',
+    isAI: false,
+    explanation:
+      'Pairs two oddly specific identities and lands a dry joke at its own expense — committed, particular humor that generated bios rarely risk.',
+  },
+  {
+    id: 'sc-5',
+    category: 'Social Caption',
+    text: 'Chasing dreams and making memories! ✨ So blessed to be surrounded by amazing energy on this beautiful adventure called life.',
+    isAI: true,
+    explanation:
+      '"Adventure called life" plus stacked feel-good abstractions ("dreams," "memories," "energy") with no actual event — a caption-generator staple.',
+  },
+  {
+    id: 'sc-6',
+    category: 'Social Caption',
+    text: 'update: the seagull came back for the second sandwich. no notes, honestly. committed to the bit',
+    isAI: false,
+    explanation:
+      'Lowercase running-update format, a petty specific antagonist, and internet-native phrasing ("committed to the bit") — idiosyncratic in a way templates rarely reproduce.',
+  },
 ];

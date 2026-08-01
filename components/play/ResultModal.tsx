@@ -19,6 +19,7 @@ export default function ResultModal({
   title,
   subtitle,
   delta,
+  wager,
   balanceAfter,
   primaryLabel,
   onPrimary,
@@ -30,6 +31,8 @@ export default function ResultModal({
   title: string;
   subtitle?: string;
   delta: number;
+  /** Optional: the round's effective total wager, shown under the delta. */
+  wager?: number;
   balanceAfter: number;
   primaryLabel: string;
   onPrimary: () => void;
@@ -47,7 +50,10 @@ export default function ResultModal({
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           <Text style={[styles.delta, { color }]}>{formatSignedTokens(delta)}</Text>
-          <Text style={styles.balance}>New balance: {formatTokens(balanceAfter)}</Text>
+          <Text style={styles.balance}>
+            {typeof wager === 'number' ? `Wager ${formatTokens(wager)} · ` : ''}New balance:{' '}
+            {formatTokens(balanceAfter)}
+          </Text>
 
           <View style={styles.actions}>
             {secondaryLabel && onSecondary ? (

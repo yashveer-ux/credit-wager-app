@@ -16,10 +16,13 @@ import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { applyBalanceDelta, useBalance } from '../../lib/play/balanceStore';
+import { formatRelativeTime } from '../../lib/format';
+import { applyAndRecord, useUnifiedHistory } from '../../lib/ledger/ledgerStore';
+import { useBalance } from '../../lib/play/balanceStore';
 import { formatSignedTokens, formatTokens } from '../../lib/play/format';
 import { usePlayHistory } from '../../lib/play/historyStore';
 import { colors, radius, space } from '../../lib/theme';
+import HistoryPanel, { KIND_LABEL } from './HistoryPanel';
 
 const MOCK_USERNAME = 'Yash';
 const MOCK_LEVEL = 'Level 4';
@@ -47,6 +50,17 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
   const insets = useSafeAreaInsets();
   const { balance } = useBalance();
   const history = usePlayHistory();
+  const unifiedHistory = useUnifiedHistory();
+
+  // 'history' switches the sheet into a full-height in-sheet history view —
+  // it never navigates away, so the bottom tab bar is never involved.
+  const [view, setView] = useState<'profile' | 'history'>('profile');
+
+  // Every close path goes through here so the sheet reopens on the profile view.
+  const handleClose = () => {
+    setView('profile');
+    onClose();
+  };
 
   const stats = useMemo(() => {
     const played = history.length;
@@ -57,7 +71,7 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
     return { played, wins, winRate, totalWagered, totalWon };
   }, [history]);
 
-  const recentHistory = history.slice(0, RECENT_HISTORY_LIMIT);
+  const recentHistory = unifiedHistory.slice(0, RECENT_HISTORY_LIMIT);
 
   const handleWithdraw = () => {
     const amount = Math.min(DEMO_WITHDRAWAL_AMOUNT, balance);
@@ -65,20 +79,17 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
       Alert.alert('Demo Withdrawal', 'This is a fictional demo — there are no funds to withdraw.');
       return;
     }
-    applyBalanceDelta(-amount);
+    applyAndRecord({ kind: 'withdrawal', label: 'Demo withdrawal', delta: -amount, status: 'demo' });
     Alert.alert(
       'Demo Withdrawal',
       `This is a fictional demo — no real funds are transferred. ${formatTokens(amount)} AI Tokens were deducted from your demo balance.`
     );
   };
 
-  const handleHistory = () => {
-    onClose();
-    router.push('/history' as any);
-  };
+  const handleHistory = () => setView('history');
 
   const handleRewards = () => {
-    onClose();
+    handleClose();
     router.push('/rewards' as any);
   };
 
@@ -88,7 +99,7 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: onClose },
+      { text: 'Sign out', style: 'destructive', onPress: handleClose },
     ]);
   };
 
@@ -98,23 +109,48 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
       transparent
       animationType="slide"
       statusBarTranslucent
-      onRequestClose={onClose}>
+      onRequestClose={handleClose}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleClose}
+          accessibilityLabel="Close"
+        />
+        <View
+          style={[
+            styles.sheet,
+            // Fixed height in history mode so the inner list can fill + scroll.
+            view === 'history' ? styles.sheetTall : styles.sheetCapped,
+            { paddingBottom: insets.bottom + space.lg },
+          ]}>
           <View style={styles.handle} />
           <View style={styles.sheetHeaderRow}>
-            <Text style={styles.sheetTitle}>Profile</Text>
+            <View style={styles.sheetTitleGroup}>
+              {view === 'history' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to profile"
+                  hitSlop={8}
+                  onPress={() => setView('profile')}
+                  style={styles.backButton}>
+                  <Ionicons name="chevron-back" size={20} color={colors.text} />
+                </Pressable>
+              ) : null}
+              <Text style={styles.sheetTitle}>{view === 'history' ? 'History' : 'Profile'}</Text>
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close profile"
               hitSlop={8}
-              onPress={onClose}
+              onPress={handleClose}
               style={styles.closeButton}>
               <Ionicons name="close" size={20} color={colors.muted} />
             </Pressable>
           </View>
 
+          {view === 'history' ? (
+            <HistoryPanel />
+          ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}>
@@ -169,7 +205,7 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
                 <Text style={styles.sectionTitle}>Recent activity</Text>
               </View>
               {recentHistory.length === 0 ? (
-                <Text style={styles.emptyText}>No games played yet.</Text>
+                <Text style={styles.emptyText}>No activity yet.</Text>
               ) : (
                 recentHistory.map((entry) => (
                   <View key={entry.id} style={styles.historyRow}>
@@ -177,7 +213,11 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
                       <Text style={styles.historyLabel} numberOfLines={1}>
                         {entry.label}
                       </Text>
-                      <Text style={styles.historyWager}>Wager {formatTokens(entry.wager)}</Text>
+                      <Text style={styles.historyWager}>
+                        {(entry.provider ?? KIND_LABEL[entry.kind]) +
+                          ' · ' +
+                          formatRelativeTime(entry.createdAt)}
+                      </Text>
                     </View>
                     <Text
                       style={[
@@ -204,6 +244,7 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
               />
             </View>
           </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
@@ -268,8 +309,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.lg,
     paddingHorizontal: space.lg,
     paddingTop: space.sm,
-    maxHeight: '88%',
   },
+  sheetCapped: { maxHeight: '85%' },
+  sheetTall: { height: '85%' },
   handle: {
     alignSelf: 'center',
     width: 40,
@@ -283,6 +325,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: space.md,
+  },
+  sheetTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  backButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -space.sm,
   },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   closeButton: {

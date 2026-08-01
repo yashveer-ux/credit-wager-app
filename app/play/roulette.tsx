@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -35,6 +36,10 @@ const WHEEL_RADIUS = WHEEL_SIZE / 2 - 18;
 const POCKET_SIZE = 22;
 const ANGLE_STEP = 360 / WHEEL_ORDER.length;
 const SPIN_DURATION = 3200;
+const NUM_CHIP_SIZE = 40;
+const NUM_CHIP_GAP = 6;
+/** Ring color for the last landed number — reads clearly on red, black, and green chips. */
+const LAST_RESULT_RING = '#F59E0B';
 
 const NUMBERS = Array.from({ length: 37 }, (_, n) => n);
 
@@ -58,6 +63,7 @@ type ResultState = {
   title: string;
   subtitle: string;
   delta: number;
+  wager: number;
   balanceAfter: number;
 };
 
@@ -94,6 +100,7 @@ function betLabel(bet: RouletteBet): string {
 }
 
 export default function RouletteScreen() {
+  const router = useRouter();
   const { balance } = useBalance();
 
   const [wager, setWager] = useState(GAME.minWager);
@@ -107,12 +114,14 @@ export default function RouletteScreen() {
     title: '',
     subtitle: '',
     delta: 0,
+    wager: 0,
     balanceAfter: 0,
   });
 
   const [rotationAnim] = useState(() => new Animated.Value(0));
   const rotationRef = useRef(0);
   const settledRef = useRef(false);
+  const numbersScrollRef = useRef<ScrollView>(null);
 
   const pockets = useMemo(
     () =>
@@ -168,6 +177,11 @@ export default function RouletteScreen() {
     settledRef.current = true;
 
     setSpinResult(outcome);
+    // Bring the landed number into view on the betting strip.
+    numbersScrollRef.current?.scrollTo({
+      x: Math.max(0, outcome * (NUM_CHIP_SIZE + NUM_CHIP_GAP) - 140),
+      animated: true,
+    });
     const won = resolveBet(activeBet, outcome);
     const payout = roulettePayout(effectiveWager, activeBet.type, won);
     const balanceAfter = applyBalanceDelta(payout);
@@ -191,6 +205,7 @@ export default function RouletteScreen() {
       title: won ? 'You win!' : 'No luck this time',
       subtitle: `The ball landed on ${outcome} (${colorOf(outcome)}).`,
       delta: payout - effectiveWager,
+      wager: effectiveWager,
       balanceAfter,
     });
   }
@@ -198,7 +213,8 @@ export default function RouletteScreen() {
   function onPlayAgain() {
     setResult((s) => ({ ...s, visible: false }));
     setBet(null);
-    setSpinResult(null);
+    // Keep spinResult: the "last result" chip and board highlight persist
+    // until the next spin starts.
     setPhase('betting');
     setWager((w) => Math.max(0, Math.min(w, balance)));
   }
@@ -244,10 +260,12 @@ export default function RouletteScreen() {
             </View>
           </Animated.View>
 
-          {spinResult !== null && phase === 'settled' ? (
+          {spinResult !== null && phase !== 'spinning' ? (
             <View style={styles.resultRow}>
               <View style={[styles.resultDot, { backgroundColor: pocketColor(spinResult) }]} />
-              <Text style={styles.resultText}>Result: {spinResult}</Text>
+              <Text style={styles.resultText}>
+                Last result: {spinResult} · {colorOf(spinResult)}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -255,11 +273,13 @@ export default function RouletteScreen() {
         <View style={styles.boardSection}>
           <Text style={styles.boardLabel}>Straight numbers</Text>
           <ScrollView
+            ref={numbersScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.numberRow}>
             {NUMBERS.map((n) => {
               const selected = bet?.type === 'straight' && bet.value === n;
+              const landed = spinResult === n && phase !== 'spinning';
               return (
                 <Pressable
                   key={n}
@@ -271,7 +291,8 @@ export default function RouletteScreen() {
                   style={[
                     styles.numberChip,
                     { backgroundColor: pocketColor(n) },
-                    selected && { borderColor: GAME.accent },
+                    landed && styles.numberChipLanded,
+                    selected && styles.numberChipSelected,
                     roundActive && styles.disabled,
                   ]}>
                   <Text style={styles.numberChipLabel}>{n}</Text>
@@ -339,11 +360,15 @@ export default function RouletteScreen() {
         title={result.title}
         subtitle={result.subtitle}
         delta={result.delta}
+        wager={result.wager}
         balanceAfter={result.balanceAfter}
         primaryLabel="Play again"
         onPrimary={onPlayAgain}
         secondaryLabel="Lobby"
-        onSecondary={() => setResult((s) => ({ ...s, visible: false }))}
+        onSecondary={() => {
+          setResult((s) => ({ ...s, visible: false }));
+          router.back();
+        }}
       />
     </View>
   );
@@ -397,21 +422,27 @@ const styles = StyleSheet.create({
 
   boardSection: { gap: space.sm },
   boardLabel: { fontSize: 13, fontWeight: '700', color: colors.muted, letterSpacing: 0.3 },
-  numberRow: { gap: space.xs + 2, paddingVertical: space.xs },
+  numberRow: { gap: NUM_CHIP_GAP, paddingVertical: space.xs },
   numberChip: {
-    width: 34,
-    height: 34,
+    width: NUM_CHIP_SIZE,
+    height: NUM_CHIP_SIZE,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: 'transparent',
   },
-  numberChipLabel: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  // White inset ring + slight scale: visible against red, black, and green fills.
+  numberChipSelected: { borderColor: '#FFFFFF', transform: [{ scale: 1.08 }] },
+  // Amber ring marks where the ball last landed.
+  numberChipLanded: { borderColor: LAST_RESULT_RING },
+  numberChipLabel: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   outsideRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   outsideChip: {
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,

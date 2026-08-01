@@ -20,7 +20,7 @@ export default function RewardsScreen() {
       style={styles.screen}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + space.lg, paddingBottom: space.xxl },
+        { paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.xxl },
       ]}>
       <Text style={styles.pageTitle}>Rewards 🎁</Text>
 

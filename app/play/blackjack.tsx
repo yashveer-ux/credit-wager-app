@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
@@ -20,6 +21,7 @@ import {
   type BlackjackResult,
   type Card,
 } from '../../lib/play/blackjackEngine';
+import { formatSignedTokens } from '../../lib/play/format';
 import { getGame } from '../../lib/play/games';
 import { haptics } from '../../lib/play/haptics';
 import { recordRound } from '../../lib/play/historyStore';
@@ -36,6 +38,7 @@ type ResultState = {
   title: string;
   subtitle: string;
   delta: number;
+  wager: number;
   balanceAfter: number;
 };
 
@@ -99,6 +102,7 @@ const PHASE_CHIP: Partial<Record<Phase, string>> = {
 };
 
 export default function BlackjackScreen() {
+  const router = useRouter();
   const { balance } = useBalance();
 
   const [wager, setWager] = useState(GAME.minWager);
@@ -113,6 +117,7 @@ export default function BlackjackScreen() {
     title: '',
     subtitle: '',
     delta: 0,
+    wager: 0,
     balanceAfter: 0,
   });
 
@@ -159,6 +164,7 @@ export default function BlackjackScreen() {
       title,
       subtitle,
       delta: payout - effectiveWager,
+      wager: effectiveWager,
       balanceAfter,
     });
   }
@@ -261,12 +267,25 @@ export default function BlackjackScreen() {
     setWager((w) => Math.max(0, Math.min(w, balance)));
   }
 
-  const playerTotal = playerCards.length ? handValue(playerCards).total : null;
-  const dealerTotal =
-    !dealerHoleHidden && dealerCards.length ? handValue(dealerCards).total : null;
+  // Player total: soft hands display both values ("7/17") except a plain 21.
+  const playerValue = playerCards.length ? handValue(playerCards) : null;
+  const playerTotalText =
+    playerValue === null
+      ? '—'
+      : playerValue.soft && playerValue.total !== 21
+        ? `${playerValue.total - 10}/${playerValue.total}`
+        : String(playerValue.total);
+  // Dealer total: while the hole card is down, only count the visible cards.
+  const dealerVisibleCards = dealerHoleHidden ? dealerCards.slice(0, -1) : dealerCards;
+  const dealerTotalText = !dealerCards.length
+    ? '—'
+    : dealerHoleHidden
+      ? `${handValue(dealerVisibleCards).total} + ?`
+      : String(handValue(dealerCards).total);
   const canDouble = phase === 'player-turn' && playerCards.length === 2 && canAfford(wager);
   const roundActive = phase !== 'betting';
   const chipLabel = PHASE_CHIP[phase];
+  const settled = phase === 'settled';
 
   return (
     <View style={styles.screen}>
@@ -277,25 +296,56 @@ export default function BlackjackScreen() {
         </Text>
 
         <View style={[styles.table, { borderColor: GAME.accent }]}>
-          {chipLabel ? (
+          {settled && result.title ? (
+            <Chip
+              label={result.title}
+              tone={result.outcome === 'win' ? 'positive' : result.outcome === 'loss' ? 'negative' : 'neutral'}
+            />
+          ) : chipLabel ? (
             <Chip label={chipLabel} color={GAME.accent} backgroundColor={GAME.accentSoft} />
           ) : (
             <View style={styles.chipSpacer} />
           )}
 
           <HandBlock
-            label="Dealer"
+            label="AI Dealer"
+            icon="hardware-chip"
             cards={dealerCards}
             hideLastCard={dealerHoleHidden}
-            total={dealerTotal}
+            totalText={dealerTotalText}
             accent={GAME.accent}
           />
-          <View style={styles.tableDivider} />
+
+          <View style={styles.tableMiddle}>
+            {settled && result.title ? (
+              <View style={styles.tableResult}>
+                <Text
+                  style={[
+                    styles.tableResultDelta,
+                    {
+                      color:
+                        result.outcome === 'win'
+                          ? colors.positive
+                          : result.outcome === 'loss'
+                            ? colors.negative
+                            : colors.muted,
+                    },
+                  ]}>
+                  {formatSignedTokens(result.delta)}
+                </Text>
+                <Text style={styles.tableResultSubtitle}>{result.subtitle}</Text>
+              </View>
+            ) : (
+              <View style={styles.tableDivider} />
+            )}
+          </View>
+
           <HandBlock
             label="You"
+            icon="person"
             cards={playerCards}
             hideLastCard={false}
-            total={playerTotal}
+            totalText={playerTotalText}
             accent={GAME.accent}
           />
         </View>
@@ -352,12 +402,14 @@ export default function BlackjackScreen() {
         title={result.title}
         subtitle={result.subtitle}
         delta={result.delta}
+        wager={result.wager}
         balanceAfter={result.balanceAfter}
         primaryLabel="Play again"
         onPrimary={onPlayAgain}
         secondaryLabel="Lobby"
         onSecondary={() => {
           setResult((s) => ({ ...s, visible: false }));
+          router.back();
         }}
       />
     </View>
@@ -366,22 +418,33 @@ export default function BlackjackScreen() {
 
 function HandBlock({
   label,
+  icon,
   cards,
   hideLastCard,
-  total,
+  totalText,
   accent,
 }: {
   label: string;
+  icon: keyof typeof Ionicons.glyphMap;
   cards: Card[];
   hideLastCard: boolean;
-  total: number | null;
+  totalText: string;
   accent: string;
 }) {
+  // Real hands compress: once the row gets long, cards overlap like a fan.
+  const overlap = cards.length > 4;
   return (
     <View style={styles.handBlock}>
       <View style={styles.handHeaderRow}>
-        <Text style={styles.handLabel}>{label}</Text>
-        <Text style={[styles.handTotal, { color: accent }]}>{total === null ? '—' : total}</Text>
+        <View style={styles.handIdentity}>
+          <View style={[styles.handAvatar, { backgroundColor: `${accent}1A` }]}>
+            <Ionicons name={icon} size={14} color={accent} />
+          </View>
+          <Text style={styles.handLabel}>{label}</Text>
+        </View>
+        <View style={[styles.handTotalBadge, { backgroundColor: `${accent}14` }]}>
+          <Text style={[styles.handTotal, { color: accent }]}>{totalText}</Text>
+        </View>
       </View>
       <View style={styles.handCards}>
         {cards.length === 0 ? (
@@ -395,6 +458,7 @@ function HandBlock({
               index={i}
               card={card}
               hidden={hideLastCard && i === cards.length - 1}
+              overlapped={overlap && i > 0}
             />
           ))
         )}
@@ -403,9 +467,23 @@ function HandBlock({
   );
 }
 
-function PlayingCard({ card, hidden, index }: { card: Card; hidden: boolean; index: number }) {
+function PlayingCard({
+  card,
+  hidden,
+  index,
+  overlapped,
+}: {
+  card: Card;
+  hidden: boolean;
+  index: number;
+  overlapped: boolean;
+}) {
   const [translateY] = useState(() => new Animated.Value(14));
   const [opacity] = useState(() => new Animated.Value(0));
+  // Drives the hole-card flip: 1 = lying flat; on reveal it snaps to 0 (edge-on)
+  // and springs open so the reveal reads as a distinct card flip.
+  const [flip] = useState(() => new Animated.Value(1));
+  const wasHiddenRef = useRef(hidden);
 
   useEffect(() => {
     const delay = Math.min(index, 4) * 90;
@@ -416,12 +494,27 @@ function PlayingCard({ card, hidden, index }: { card: Card; hidden: boolean; ind
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (wasHiddenRef.current && !hidden) {
+      flip.setValue(0);
+      Animated.spring(flip, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 6 }).start();
+    }
+    wasHiddenRef.current = hidden;
+  }, [hidden, flip]);
+
   const isRed = RED_SUITS.has(card.suit);
+  const rotateY = flip.interpolate({ inputRange: [0, 1], outputRange: ['85deg', '0deg'] });
 
   return (
-    <Animated.View style={[styles.card, { opacity, transform: [{ translateY }] }]}>
+    <Animated.View
+      style={[
+        styles.card,
+        hidden && styles.cardBack,
+        overlapped && styles.cardOverlapped,
+        { opacity, transform: [{ translateY }, { rotateY }] },
+      ]}>
       {hidden ? (
-        <Ionicons name="hardware-chip-outline" size={18} color={colors.border} />
+        <Ionicons name="hardware-chip" size={20} color={GAME.accent} />
       ) : (
         <>
           <Text style={[styles.cardRank, { color: isRed ? colors.negative : colors.text }]}>
@@ -451,12 +544,31 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   chipSpacer: { height: 24 },
+  tableMiddle: { flex: 1, justifyContent: 'center' },
   tableDivider: { height: 1, backgroundColor: colors.border },
+  tableResult: { alignItems: 'center', gap: 2 },
+  tableResultDelta: { fontSize: 24, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  tableResultSubtitle: { fontSize: 12, color: colors.muted, textAlign: 'center' },
 
   handBlock: { gap: space.sm },
-  handHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  handHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  handIdentity: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  handAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   handLabel: { fontSize: 13, fontWeight: '700', color: colors.muted, letterSpacing: 0.3 },
-  handTotal: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  handTotalBadge: {
+    minWidth: 40,
+    paddingHorizontal: space.sm + 2,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  handTotal: { fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
   handCards: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
 
   card: {
@@ -469,6 +581,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardBack: {
+    backgroundColor: GAME.accentSoft,
+    borderColor: GAME.accent,
+  },
+  cardOverlapped: { marginLeft: -22 },
   cardRank: { fontSize: 16, fontWeight: '800' },
   cardSuit: { fontSize: 14, fontWeight: '700', marginTop: 2 },
   emptySlot: {

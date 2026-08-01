@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { formatTokens } from '../../lib/play/format';
 import { getGame } from '../../lib/play/games';
 import type { GameMeta } from '../../lib/play/types';
 import { colors, radius, space } from '../../lib/theme';
@@ -15,7 +14,9 @@ const LIGHT_CARD_GAME_ID = 'human-or-ai';
 const DARK_CARD_GAME_ID = 'crash';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_WIDTH = (SCREEN_WIDTH - space.lg * 2 - space.md) / 2;
+// Wide enough for the description to breathe; on small screens the cards
+// exceed half the row and the ScrollView shows ~1.6 cards with a peek.
+const CARD_WIDTH = Math.max(200, (SCREEN_WIDTH - space.lg * 2 - space.md) / 2);
 
 export default function FeaturedChallenges() {
   const router = useRouter();
@@ -61,7 +62,7 @@ function LightChallengeCard({ game, onPress }: { game: GameMeta; onPress: () => 
       onPress={onPress}
       style={({ pressed }) => [styles.card, styles.cardLight, pressed && styles.pressed]}>
       <View style={[styles.thumbWrap, { backgroundColor: game.accentSoft }]}>
-        <GameIcon gameId={game.id} size={48} />
+        <GameIcon gameId={game.id} size={60} />
       </View>
       <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
         {game.name}
@@ -89,7 +90,7 @@ function DarkChallengeCard({ game, onPress }: { game: GameMeta; onPress: () => v
       onPress={onPress}
       style={({ pressed }) => [styles.card, styles.cardDark, pressed && styles.pressed]}>
       <View style={styles.thumbWrapDark}>
-        <GameIcon gameId={game.id} size={48} />
+        <GameIcon gameId={game.id} size={60} />
       </View>
       <Text style={styles.titleDark} numberOfLines={1} ellipsizeMode="tail">
         {game.name}
@@ -99,7 +100,7 @@ function DarkChallengeCard({ game, onPress }: { game: GameMeta; onPress: () => v
       </Text>
       <View style={styles.darkDivider} />
       <Text style={styles.statDark} numberOfLines={1} ellipsizeMode="tail">
-        Up to {game.maxMultiplierLabel} · min {formatTokens(game.minWager)}
+        Up to {game.maxMultiplierLabel}
       </Text>
     </Pressable>
   );
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: space.lg,
     gap: space.xs + 2,
-    minHeight: 200,
+    minHeight: 212,
   },
   cardLight: {
     backgroundColor: colors.surface,
@@ -132,23 +133,23 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
 
   thumbWrap: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbWrapDark: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
 
   title: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: space.xs },
-  body: { fontSize: 12, color: colors.muted, lineHeight: 16, flex: 1 },
+  body: { fontSize: 12, color: colors.muted, lineHeight: 16, minHeight: 32, flex: 1 },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   badge: {
     paddingHorizontal: space.sm + 2,
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
 
   titleDark: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginTop: space.xs },
-  bodyDark: { fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 16 },
+  bodyDark: { fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 16, minHeight: 32, flex: 1 },
   darkDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.15)',

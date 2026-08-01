@@ -20,13 +20,15 @@ const GAME = getGame('chambers')!;
 const MAX_SAFE_BEFORE_AUTO_SETTLE = CHAMBERS_TOTAL - 1; // 5: the last chamber must be the loser
 
 type RoundPhase = 'idle' | 'active' | 'settled';
-type ChamberState = 'closed' | 'safe' | 'loss';
+/** 'revealed' = the live chamber shown after the round ends without it being picked. */
+type ChamberState = 'closed' | 'safe' | 'loss' | 'revealed';
 
 type ResultState = {
   outcome: ResultOutcome;
   title: string;
   subtitle: string;
   delta: number;
+  wager: number;
   balanceAfter: number;
 };
 
@@ -49,6 +51,10 @@ export default function ChambersScreen() {
   const roundActive = phase === 'active';
   const wagerValid = isValidWager(wager, GAME.minWager, balance) && canAfford(wager);
   const potentialMultiplier = safeCount > 0 ? chambersMultiplier(safeCount) : null;
+  const nextMultiplier =
+    roundActive && safeCount < MAX_SAFE_BEFORE_AUTO_SETTLE
+      ? chambersMultiplier(safeCount + 1)
+      : null;
 
   function startRound() {
     if (roundActive || !wagerValid) return;
@@ -82,6 +88,7 @@ export default function ChambersScreen() {
       title: 'Chamber was live',
       subtitle: `Chamber ${index + 1} shorted out the sequence`,
       delta: -wager,
+      wager,
       balanceAfter,
     });
   }
@@ -106,6 +113,7 @@ export default function ChambersScreen() {
       title: finalSafeCount === MAX_SAFE_BEFORE_AUTO_SETTLE ? 'Sequence cleared' : 'Cashed out',
       subtitle: `${formatMultiplier(chambersMultiplier(finalSafeCount))} on ${finalSafeCount} safe chamber${finalSafeCount === 1 ? '' : 's'}`,
       delta: payout - wager,
+      wager,
       balanceAfter,
     });
   }
@@ -168,7 +176,10 @@ export default function ChambersScreen() {
             backgroundColor={GAME.accentSoft}
           />
           {potentialMultiplier !== null && roundActive ? (
-            <Chip label={`Potential ${formatMultiplier(potentialMultiplier)}`} tone="accent" color={GAME.accent} backgroundColor={GAME.accentSoft} />
+            <Chip label={`Banked ${formatMultiplier(potentialMultiplier)}`} tone="accent" color={GAME.accent} backgroundColor={GAME.accentSoft} />
+          ) : null}
+          {nextMultiplier !== null ? (
+            <Chip label={`Next pick ${formatMultiplier(nextMultiplier)}`} tone="neutral" />
           ) : null}
         </View>
 
@@ -177,6 +188,7 @@ export default function ChambersScreen() {
           losingIndex={losingIndex}
           active={roundActive}
           settling={settling}
+          revealLosing={phase === 'settled'}
           accent={GAME.accent}
           onOpen={openChamber}
         />
@@ -224,6 +236,7 @@ export default function ChambersScreen() {
         title={result?.title ?? ''}
         subtitle={result?.subtitle}
         delta={result?.delta ?? 0}
+        wager={result?.wager}
         balanceAfter={result?.balanceAfter ?? balance}
         primaryLabel="Play again"
         onPrimary={playAgain}
@@ -243,6 +256,7 @@ function ChamberGrid({
   losingIndex,
   active,
   settling,
+  revealLosing,
   accent,
   onOpen,
 }: {
@@ -250,6 +264,8 @@ function ChamberGrid({
   losingIndex: number | null;
   active: boolean;
   settling: boolean;
+  /** After the round settles, expose where the live chamber was hiding. */
+  revealLosing: boolean;
   accent: string;
   onOpen: (index: number) => void;
 }) {
@@ -259,7 +275,13 @@ function ChamberGrid({
     <View style={styles.grid}>
       {indices.map((i) => {
         const isOpened = opened.has(i);
-        const state: ChamberState = !isOpened ? 'closed' : i === losingIndex ? 'loss' : 'safe';
+        const state: ChamberState = isOpened
+          ? i === losingIndex
+            ? 'loss'
+            : 'safe'
+          : revealLosing && i === losingIndex
+            ? 'revealed'
+            : 'closed';
         return (
           <Chamber
             key={i}
@@ -289,9 +311,17 @@ function Chamber({
   onPress: () => void;
 }) {
   const tint =
-    state === 'safe' ? colors.positive : state === 'loss' ? colors.negative : accent;
+    state === 'safe'
+      ? colors.positive
+      : state === 'loss' || state === 'revealed'
+        ? colors.negative
+        : accent;
   const bg =
-    state === 'safe' ? '#E4F6EE' : state === 'loss' ? '#FBE7EA' : `${accent}14`;
+    state === 'safe'
+      ? '#E4F6EE'
+      : state === 'loss' || state === 'revealed'
+        ? '#FBE7EA'
+        : `${accent}14`;
 
   return (
     <Pressable
@@ -302,6 +332,7 @@ function Chamber({
       style={({ pressed }) => [
         styles.chamber,
         { borderColor: tint, backgroundColor: bg },
+        state === 'revealed' && styles.chamberRevealed,
         pressed && !disabled && styles.chamberPressed,
       ]}>
       <View style={[styles.chamberRing, { borderColor: tint }]}>
@@ -314,7 +345,13 @@ function Chamber({
         )}
       </View>
       <Text style={[styles.chamberLabel, { color: tint }]}>
-        {state === 'closed' ? `0${index + 1}` : state === 'safe' ? 'Safe' : 'Live'}
+        {state === 'closed'
+          ? `0${index + 1}`
+          : state === 'safe'
+            ? 'Safe'
+            : state === 'revealed'
+              ? 'Was live'
+              : 'Live'}
       </Text>
     </Pressable>
   );
@@ -340,6 +377,8 @@ const styles = StyleSheet.create({
     gap: space.xs + 2,
   },
   chamberPressed: { opacity: 0.7 },
+  // Dimmed + dashed: "this one was live, you dodged it" rather than "you hit it".
+  chamberRevealed: { opacity: 0.65, borderStyle: 'dashed' },
   chamberRing: {
     width: 44,
     height: 44,

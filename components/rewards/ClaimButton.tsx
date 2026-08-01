@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import type { ClaimState } from '../../lib/rewards/types';
@@ -7,6 +8,9 @@ import { colors, radius, space } from '../../lib/theme';
 /**
  * Shared claim/status button used by missions, weekly challenges, and
  * milestones. Renders one of the 4 required visual states.
+ *
+ * Double-tap safe: a synchronous ref guard swallows any second press that
+ * lands before the parent re-renders the button into its 'claimed' state.
  */
 export default function ClaimButton({
   state,
@@ -17,6 +21,17 @@ export default function ClaimButton({
   onPress: () => void;
   claimLabel?: string;
 }) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (state === 'claimable') firedRef.current = false;
+  }, [state]);
+
+  const handlePress = () => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    onPress();
+  };
+
   if (state === 'claimed') {
     return (
       <Pressable disabled style={[styles.base, styles.claimed]}>
@@ -47,7 +62,7 @@ export default function ClaimButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={claimLabel}
-      onPress={onPress}
+      onPress={handlePress}
       style={({ pressed }) => [styles.base, styles.claimable, pressed && styles.pressed]}>
       <Text style={styles.claimableText}>{claimLabel}</Text>
     </Pressable>

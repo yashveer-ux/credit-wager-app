@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import GameIcon from '../home/GameIcon';
-import { formatTokens } from '../../lib/play/format';
 import { RISK_LABEL } from '../../lib/play/games';
 import type { GameMeta } from '../../lib/play/types';
 import { colors, radius, space } from '../../lib/theme';
@@ -40,8 +39,13 @@ export default function GameCard({
         onPress={onPress}
         style={[styles.card, featured && styles.cardFeatured]}>
         <View style={styles.topRow}>
-          <View style={[styles.iconWrap, { backgroundColor: game.accentSoft }]}>
-            <GameIcon gameId={game.id} size={featured ? 30 : 26} />
+          <View
+            style={[
+              styles.iconWrap,
+              featured && styles.iconWrapFeatured,
+              { backgroundColor: game.accentSoft },
+            ]}>
+            <GameIcon gameId={game.id} size={featured ? 60 : 54} />
           </View>
           {featured ? <Chip label="Featured" tone="accent" /> : null}
         </View>
@@ -52,7 +56,6 @@ export default function GameCard({
 
         <View style={styles.footerRow}>
           <Chip label={RISK_LABEL[game.risk]} tone={RISK_TONE[game.risk]} />
-          <Text style={styles.meta}>Min {formatTokens(game.minWager)}</Text>
           <Text style={[styles.meta, styles.metaStrong]}>Up to {game.maxMultiplierLabel}</Text>
         </View>
       </Pressable>
@@ -67,26 +70,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: space.lg,
-    gap: space.xs + 2,
+    gap: space.xs,
   },
-  cardFeatured: { padding: space.xl, gap: space.sm },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardFeatured: { padding: space.lg + 4, gap: space.xs + 2 },
+  topRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 64,
+    height: 64,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: space.xs },
+  iconWrapFeatured: {
+    width: 72,
+    height: 72,
+  },
+  name: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: 2 },
   nameFeatured: { fontSize: 20 },
   tagline: { fontSize: 13, color: colors.muted },
-  description: { fontSize: 13, color: colors.muted, marginTop: 2, lineHeight: 18 },
+  description: { fontSize: 13, color: colors.muted, lineHeight: 17 },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm + 2,
-    marginTop: space.sm,
+    marginTop: space.xs,
     flexWrap: 'wrap',
   },
   meta: { fontSize: 12, color: colors.muted, fontWeight: '600' },

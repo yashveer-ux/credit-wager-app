@@ -75,6 +75,12 @@ export default function WagerBar({
         ))}
         <Pressable
           disabled={disabled}
+          onPress={() => onChange(clamp(value * 2))}
+          style={[styles.presetChip, disabled && styles.disabled]}>
+          <Text style={styles.presetLabel}>×2</Text>
+        </Pressable>
+        <Pressable
+          disabled={disabled}
           onPress={() => onChange(clamp(max))}
           style={[styles.presetChip, disabled && styles.disabled]}>
           <Text style={styles.presetLabel}>Max</Text>
@@ -97,9 +103,9 @@ const styles = StyleSheet.create({
   balanceHint: { fontSize: 12, color: colors.muted },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.bg,
@@ -117,7 +123,9 @@ const styles = StyleSheet.create({
   presetRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
   presetChip: {
     paddingHorizontal: space.md,
-    paddingVertical: space.sm - 2,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
