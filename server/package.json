@@ -1,0 +1,23 @@
+{
+  "name": "credit-wager-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "node --env-file-if-exists=.env src/db/seed.ts",
+    "test": "node --env-file-if-exists=.env ./node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "^0.44.6",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "drizzle-kit": "^0.31.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:17
+    ports: ['5432:5432']
+    environment:
+      POSTGRES_USER: wager
+      POSTGRES_PASSWORD: wager
+      POSTGRES_DB: credit_wager
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wager -d credit_wager']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
