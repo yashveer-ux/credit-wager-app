@@ -24,19 +24,26 @@ export function formatSigned(amount: number, code: CreditTypeCode): string {
   return `${sign}${formatAmount(amount, code)}`;
 }
 
-const relative = new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' });
-
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+const UNITS: [label: string, ms: number][] = [
   ['day', 86_400_000],
   ['hour', 3_600_000],
   ['minute', 60_000],
 ];
 
-/** "3 hours ago", "yesterday". Falls back to "just now" under a minute. */
+/**
+ * "3 hours ago", "yesterday". Falls back to "just now" under a minute.
+ *
+ * Hand-rolled rather than Intl.RelativeTimeFormat: Hermes ships without it, so
+ * the Intl version throws on device even though it works under Node/Jest.
+ * Ledger entries are always in the past, so future timestamps aren't handled.
+ */
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
-  const diff = new Date(iso).getTime() - now.getTime();
-  for (const [unit, ms] of UNITS) {
-    if (Math.abs(diff) >= ms) return relative.format(Math.round(diff / ms), unit);
+  const elapsed = now.getTime() - new Date(iso).getTime();
+  for (const [label, ms] of UNITS) {
+    if (elapsed < ms) continue;
+    const n = Math.floor(elapsed / ms);
+    if (label === 'day' && n === 1) return 'yesterday';
+    return `${n} ${label}${n === 1 ? '' : 's'} ago`;
   }
   return 'just now';
 }
