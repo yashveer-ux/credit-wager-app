@@ -1,21 +1,11 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Dimensions,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import FeaturedChallenges from '../../components/home/FeaturedChallenges';
 import GameIcon from '../../components/home/GameIcon';
 import HomeHeader from '../../components/home/HomeHeader';
-import { fetchHome, type HomeData } from '../../lib/mock';
 import { GAMES } from '../../lib/play/games';
 import { usePlayHistory } from '../../lib/play/historyStore';
 import { colors, radius, space } from '../../lib/theme';
@@ -35,23 +25,7 @@ const GAME_ART_SIZE = GAME_CHIP_SIZE - 12;
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [data, setData] = useState<HomeData | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const history = usePlayHistory();
-
-  useEffect(() => {
-    let active = true;
-    fetchHome().then((next) => active && setData(next));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setData(await fetchHome());
-    setRefreshing(false);
-  }, []);
 
   const today = new Date().toDateString();
   const winsToday = history.filter(
@@ -65,11 +39,8 @@ export default function HomeScreen() {
       contentContainerStyle={[
         styles.content,
         { paddingTop: insets.top + space.lg, paddingBottom: space.xxl },
-      ]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />
-      }>
-      <HomeHeader displayName={data?.displayName ?? null} />
+      ]}>
+      <HomeHeader />
 
       <View style={styles.actions}>
         <QuickAction

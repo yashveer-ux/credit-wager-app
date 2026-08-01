@@ -2,6 +2,11 @@
  * Home screen header: greeting on the left, one unified AI Tokens balance
  * pill + neutral avatar (opens the profile sheet) on the right.
  *
+ * The greeting reflects the real session: a short loading skeleton while the
+ * stored session is being read, "Hi, {name}" once signed in, and a generic
+ * "Welcome" (no name) as a guest — signing in only ever happens from the
+ * profile sheet, never as a gate in front of the app.
+ *
  * Replaces the old header row + separate "AI Credits" card — this is the
  * only balance shown here; the profile sheet (via `ProfileAvatarButton`)
  * has the detailed breakdown.
@@ -10,22 +15,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useSession } from '../../lib/auth';
 import { useBalance } from '../../lib/play/balanceStore';
 import { formatTokens } from '../../lib/play/format';
 import { colors, radius, space } from '../../lib/theme';
 import { ProfileAvatarButton } from '../profile/ProfileSheet';
 
-export default function HomeHeader({ displayName }: { displayName: string | null }) {
+export default function HomeHeader() {
+  const { user, isLoading } = useSession();
   const { balance } = useBalance();
 
   return (
     <View style={styles.headerRow}>
-      {displayName ? (
-        <Text style={styles.greeting} numberOfLines={1}>
-          Hi, {displayName} 👋
-        </Text>
-      ) : (
+      {isLoading ? (
         <View style={styles.greetingSkeleton} />
+      ) : (
+        <Text style={styles.greeting} numberOfLines={1}>
+          {user ? `Hi, ${user.displayName} 👋` : 'Welcome 👋'}
+        </Text>
       )}
 
       <View style={styles.headerRight}>

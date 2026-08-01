@@ -1,9 +1,13 @@
 /**
  * Profile avatar button + bottom-sheet popup.
  *
+ * This is the ONLY place sign-in lives — the app never gates you behind a
+ * login screen; you land as a guest and everything (games, rewards, convert)
+ * already works locally. Signing in here just attaches a real account on top
+ * (server-synced history, real sign-out) via `useSession()`.
+ *
  * Shows the real unified "AI Tokens" balance (via `useBalance`) and real
- * per-round stats/history (via `usePlayHistory`) — everything else (username,
- * level) is mock decoration since there is no auth/user system in scope.
+ * per-round stats/history (via `usePlayHistory`).
  *
  * `ProfileAvatarButton` is fully self-contained: it renders the neutral grey
  * avatar circle and owns its own open/close state, so a parent only needs to
@@ -17,6 +21,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatRelativeTime } from '../../lib/format';
+import { useSession } from '../../lib/auth';
 import { useUnifiedHistory } from '../../lib/ledger/ledgerStore';
 import { useBalance } from '../../lib/play/balanceStore';
 import { formatSignedTokens, formatTokens } from '../../lib/play/format';
@@ -24,8 +29,6 @@ import { usePlayHistory } from '../../lib/play/historyStore';
 import { colors, radius, space } from '../../lib/theme';
 import HistoryPanel, { KIND_LABEL } from './HistoryPanel';
 
-const MOCK_USERNAME = 'Yash';
-const MOCK_LEVEL = 'Level 4';
 const RECENT_HISTORY_LIMIT = 5;
 
 export function ProfileAvatarButton() {
@@ -47,6 +50,7 @@ export function ProfileAvatarButton() {
 export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, signOut } = useSession();
   const { balance } = useBalance();
   const history = usePlayHistory();
   const unifiedHistory = useUnifiedHistory();
@@ -87,10 +91,22 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
   const handleSettings = () => Alert.alert('Settings', 'Coming soon');
   const handleHelp = () => Alert.alert('Help', 'Coming soon');
 
+  const handleLogin = () => {
+    handleClose();
+    router.push('/login' as any);
+  };
+
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: handleClose },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: () => {
+          void signOut();
+          handleClose();
+        },
+      },
     ]);
   };
 
@@ -149,11 +165,29 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
               <View style={styles.avatarLarge}>
                 <Ionicons name="person" size={30} color={colors.muted} />
               </View>
-              <View>
-                <Text style={styles.username}>{MOCK_USERNAME}</Text>
-                <Text style={styles.level}>{MOCK_LEVEL}</Text>
+              <View style={styles.identityText}>
+                <Text style={styles.username}>{user ? user.displayName : 'Guest'}</Text>
+                <Text style={styles.level} numberOfLines={1}>
+                  {user ? user.email : 'Playing without an account'}
+                </Text>
               </View>
             </View>
+
+            {!user && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Log in or create an account"
+                onPress={handleLogin}
+                style={({ pressed }) => [styles.loginCallout, pressed && styles.pressed]}>
+                <View style={styles.loginCalloutText}>
+                  <Text style={styles.loginCalloutTitle}>Log in or create an account</Text>
+                  <Text style={styles.loginCalloutBody}>
+                    Sync your progress across devices — you can keep playing as a guest either way.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.onAccent} />
+              </Pressable>
+            )}
 
             <View style={styles.balanceCard}>
               <Text style={styles.balanceLabel}>Unified balance</Text>
@@ -227,12 +261,16 @@ export function ProfileSheet({ visible, onClose }: { visible: boolean; onClose: 
               <MenuRow icon="gift" label="Rewards" onPress={handleRewards} />
               <MenuRow icon="settings-outline" label="Settings" onPress={handleSettings} />
               <MenuRow icon="help-circle-outline" label="Help" onPress={handleHelp} />
-              <MenuRow
-                icon="log-out-outline"
-                label="Sign out"
-                onPress={handleSignOut}
-                destructive
-              />
+              {user ? (
+                <MenuRow
+                  icon="log-out-outline"
+                  label="Sign out"
+                  onPress={handleSignOut}
+                  destructive
+                />
+              ) : (
+                <MenuRow icon="log-in-outline" label="Log in" onPress={handleLogin} />
+              )}
             </View>
           </ScrollView>
           )}
@@ -349,8 +387,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  identityText: { flex: 1 },
   username: { fontSize: 18, fontWeight: '700', color: colors.text },
   level: { fontSize: 13, color: colors.muted, marginTop: 2 },
+
+  loginCallout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    padding: space.md,
+  },
+  loginCalloutText: { flex: 1 },
+  loginCalloutTitle: { fontSize: 14, fontWeight: '700', color: colors.onAccent },
+  loginCalloutBody: {
+    fontSize: 12,
+    color: 'rgba(25,18,4,0.75)',
+    marginTop: 2,
+    lineHeight: 16,
+  },
 
   balanceCard: {
     backgroundColor: colors.accentSoft,

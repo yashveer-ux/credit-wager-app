@@ -11,7 +11,7 @@ SplashScreen.preventAutoHideAsync();
 /**
  * Drains queued rounds once there is a session to send them under, and again
  * whenever the app comes back to the foreground — the usual moment for a device
- * that was offline mid-round to have regained a connection.
+ * that was offline mid-round to have regained a connection. A no-op for guests.
  */
 function SyncOnForeground() {
   const { user } = useSession();
@@ -26,27 +26,11 @@ function SyncOnForeground() {
   return null;
 }
 
-/** Holds the splash until we know whether there is a session, so neither group flashes. */
+/** Holds the splash until we know whether there is a stored session, then always shows the app. */
 function SplashGate() {
   const { isLoading } = useSession();
   if (!isLoading) SplashScreen.hide();
   return null;
-}
-
-function RootNavigator() {
-  const { user } = useSession();
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-    </Stack>
-  );
 }
 
 export default function RootLayout() {
@@ -55,7 +39,13 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <SplashGate />
       <SyncOnForeground />
-      <RootNavigator />
+      {/*
+       * The app is never gated behind sign-in — everyone lands on the tabs
+       * as a guest. `login.tsx` is a normal pushed screen (opened from the
+       * profile sheet), not a route group swap, so it just sits alongside
+       * (tabs) here like any other top-level screen (e.g. `withdraw.tsx`).
+       */}
+      <Stack screenOptions={{ headerShown: false }} />
     </AuthProvider>
   );
 }

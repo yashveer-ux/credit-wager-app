@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,9 +13,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ApiError } from '../../lib/api';
-import { useSession } from '../../lib/auth';
-import { colors, radius, space } from '../../lib/theme';
+import { ApiError } from '../lib/api';
+import { useSession } from '../lib/auth';
+import { colors, radius, space } from '../lib/theme';
 
 /** Backend error codes the user can actually act on. Anything else is our fault. */
 const MESSAGES: Record<string, string> = {
@@ -26,6 +27,7 @@ const MESSAGES: Record<string, string> = {
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { signIn, signUp } = useSession();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -41,7 +43,9 @@ export default function AuthScreen() {
     try {
       if (isRegister) await signUp({ email, password, displayName });
       else await signIn({ email, password });
-      // On success the root navigator swaps groups; this screen unmounts.
+      // Pushed from the profile sheet as a normal stack screen now (the app
+      // is never gated behind auth), so success just closes it.
+      router.back();
     } catch (e) {
       const code = e instanceof ApiError ? e.code : '';
       const rateLimited = e instanceof ApiError && e.status === 429;
@@ -67,9 +71,19 @@ export default function AuthScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.xxl }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{isRegister ? 'Create account' : 'Welcome back'}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
+          <Text style={styles.closeButtonLabel}>✕</Text>
+        </Pressable>
+
+        <Text style={[styles.title, { marginTop: space.lg }]}>
+          {isRegister ? 'Create account' : 'Welcome back'}
+        </Text>
         <Text style={styles.subtitle}>
           {isRegister ? 'Simulated credits. No real money.' : 'Sign in to your wallet.'}
         </Text>
@@ -152,6 +166,18 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.sm },
+
+  closeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  closeButtonLabel: { fontSize: 15, fontWeight: '700', color: colors.muted },
 
   title: { fontSize: 30, fontWeight: '700', letterSpacing: -0.6, color: colors.text },
   subtitle: { fontSize: 14, color: colors.muted },
