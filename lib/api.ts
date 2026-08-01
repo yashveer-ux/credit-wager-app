@@ -1,7 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-// Simulator only: a physical device cannot reach the host's localhost.
-const BASE_URL = 'http://localhost:3000';
+import { API_URL as BASE_URL } from './online/config';
 
 const ACCESS_KEY = 'accessToken';
 const REFRESH_KEY = 'refreshToken';
@@ -31,6 +30,9 @@ export async function clearTokens() {
 }
 
 export const getRefreshToken = () => SecureStore.getItemAsync(REFRESH_KEY);
+
+/** For the realtime client, which authenticates its WebSocket with the same token. */
+export const getAccessToken = () => SecureStore.getItemAsync(ACCESS_KEY);
 
 /** An error carrying the backend's error code, so screens can map it to a message. */
 export class ApiError extends Error {

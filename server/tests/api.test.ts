@@ -7,7 +7,7 @@ const url = process.env.DATABASE_URL;
 describe.skipIf(!url)('http api', async () => {
   const { buildApp } = await import('../src/app.ts');
   const sql = postgres(url!);
-  const app = buildApp({ logger: false });
+  const app = await buildApp({ logger: false });
 
   const email = `api-test-${Date.now()}@example.test`;
   const password = 'correct horse battery';

@@ -22,7 +22,26 @@ export const transactionType = pgEnum('transaction_type', [
   'WAGER',
   'PAYOUT',
   'ADJUSTMENT',
+  // Double-down reuses WAGER, push/refund reuses PAYOUT — the outcome column on
+  // game_rounds/blackjack_hands carries the distinction. These two are genuinely
+  // new money sources with no existing type.
+  'PROMO_REDEEM',
+  'REWARD_CLAIM',
 ]);
+
+/** Lifecycle of a multiplayer table. */
+export const tableStatus = pgEnum('bj_table_status', ['OPEN', 'IN_ROUND', 'CLOSED']);
+
+/** Where a round is in the deal → turns → dealer → settle cycle. */
+export const roundPhase = pgEnum('bj_round_phase', [
+  'BETTING',
+  'DEALING',
+  'PLAYER_TURNS',
+  'DEALER_TURN',
+  'SETTLED',
+]);
+
+export const handOutcome = pgEnum('bj_hand_outcome', ['WIN', 'LOSS', 'PUSH', 'BLACKJACK', 'BUST']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -31,6 +50,10 @@ export const users = pgTable('users', {
   displayName: text('display_name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   isTestAccount: boolean('is_test_account').notNull().default(true),
+  // Profile fields. displayName above is the name; these are the rest.
+  username: text('username').unique(),
+  avatarEmoji: text('avatar_emoji'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**
@@ -145,4 +168,175 @@ export const transactions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('transactions_user_created_idx').on(t.userId, sql`${t.createdAt} DESC`)],
+);
+
+// ---------------------------------------------------------------- promo & rewards
+
+/**
+ * Redeemable codes. The raw code is never stored — only a hash — so a table dump
+ * cannot be used to redeem. `maxUses`/`maxPerUser` null means unlimited.
+ */
+export const promoCodes = pgTable('promo_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  codeHash: text('code_hash').notNull().unique(),
+  provider: text('provider').notNull().default('SIM_AI_TOKEN'),
+  tokenValue: money('token_value').notNull(),
+  active: boolean('active').notNull().default(true),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  maxUses: integer('max_uses'),
+  maxPerUser: integer('max_per_user').notNull().default(1),
+  usedCount: integer('used_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const promoRedemptions = pgTable(
+  'promo_redemptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    promoCodeId: uuid('promo_code_id')
+      .notNull()
+      .references(() => promoCodes.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    transactionId: uuid('transaction_id').references(() => transactions.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // One row per (code, user, attempt): the unique key below enforces per-user caps
+  // at maxPerUser=1 and stops a double redemption racing itself.
+  (t) => [unique('promo_redemption_once').on(t.promoCodeId, t.userId)],
+);
+
+/** A claimable reward definition, e.g. a daily bonus. */
+export const rewards = pgTable('rewards', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  tokenValue: money('token_value').notNull(),
+  active: boolean('active').notNull().default(true),
+  /** Null = one-time. Otherwise the minimum gap between claims, in seconds. */
+  cooldownSeconds: integer('cooldown_seconds'),
+});
+
+export const rewardClaims = pgTable(
+  'reward_claims',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    rewardId: uuid('reward_id')
+      .notNull()
+      .references(() => rewards.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    transactionId: uuid('transaction_id').references(() => transactions.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('reward_claims_user_reward_idx').on(t.userId, t.rewardId, sql`${t.createdAt} DESC`)],
+);
+
+// ----------------------------------------------------- multiplayer blackjack
+
+export const blackjackTables = pgTable('blackjack_tables', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** Short human code for private-table joins. Null for public tables. */
+  roomCode: text('room_code').unique(),
+  isPrivate: boolean('is_private').notNull().default(false),
+  status: tableStatus('status').notNull().default('OPEN'),
+  maxSeats: integer('max_seats').notNull().default(5),
+  minWager: money('min_wager').notNull().default('10'),
+  maxWager: money('max_wager').notNull().default('5000'),
+  creditTypeId: uuid('credit_type_id')
+    .notNull()
+    .references(() => creditTypes.id),
+  /** Bumped on every state change; clients recover missed events by comparing it. */
+  version: integer('version').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const blackjackTablePlayers = pgTable(
+  'blackjack_table_players',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tableId: uuid('table_id')
+      .notNull()
+      .references(() => blackjackTables.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    seat: integer('seat').notNull(),
+    ready: boolean('ready').notNull().default(false),
+    /** Cleared when a player disconnects; the reconnect grace timer reads it. */
+    connected: boolean('connected').notNull().default(true),
+    leftAt: timestamp('left_at', { withTimezone: true }),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One occupant per seat, and a user sits at a table once.
+    unique('bj_seat_unique').on(t.tableId, t.seat),
+    unique('bj_player_unique').on(t.tableId, t.userId),
+  ],
+);
+
+export const blackjackRounds = pgTable('blackjack_rounds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tableId: uuid('table_id')
+    .notNull()
+    .references(() => blackjackTables.id, { onDelete: 'cascade' }),
+  phase: roundPhase('phase').notNull().default('BETTING'),
+  /**
+   * The shuffled shoe and dealer hole card live here, server-only. This row is
+   * NEVER serialised to a client — the realtime layer projects a safe view.
+   */
+  deck: jsonb('deck').notNull(),
+  dealerCards: jsonb('dealer_cards').notNull().default([]),
+  /** Seat whose turn it is, null outside PLAYER_TURNS. */
+  activeSeat: integer('active_seat'),
+  /** Server-owned deadline for the current phase; clients render, never enforce. */
+  deadlineAt: timestamp('deadline_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
+});
+
+export const blackjackHands = pgTable(
+  'blackjack_hands',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    roundId: uuid('round_id')
+      .notNull()
+      .references(() => blackjackRounds.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    seat: integer('seat').notNull(),
+    wager: money('wager').notNull(),
+    doubled: boolean('doubled').notNull().default(false),
+    cards: jsonb('cards').notNull().default([]),
+    outcome: handOutcome('outcome'),
+    payout: money('payout'),
+    /** Ledger WAGER row for this hand; makes the debit idempotent per hand. */
+    wagerTxnId: uuid('wager_txn_id').references(() => transactions.id),
+    payoutTxnId: uuid('payout_txn_id').references(() => transactions.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('bj_hand_once').on(t.roundId, t.seat)],
+);
+
+/**
+ * Append-only event log per table. `seq` is monotonic within a table so a
+ * reconnecting client can ask for everything after the last seq it saw.
+ */
+export const blackjackEvents = pgTable(
+  'blackjack_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tableId: uuid('table_id')
+      .notNull()
+      .references(() => blackjackTables.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('bj_event_seq').on(t.tableId, t.seq)],
 );

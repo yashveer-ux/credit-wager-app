@@ -1,13 +1,18 @@
 import rateLimit from '@fastify/rate-limit';
-import { and, desc, eq, lt, or } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { AuthError, login, logout, refresh, register, verifyAccessToken } from './auth/index.ts';
+import { registerBlackjack } from './blackjack/realtime.ts';
 import { ConvertError, convert } from './convert.ts';
 import { creditTypes, db, transactions, wallets } from './db/index.ts';
 import { GameError, grantTokens, placeWager, settleRound } from './games.ts';
 import { parseAmount } from './money.ts';
+import { getProfile, updateProfile } from './profile.ts';
+import { redeemPromo } from './promo.ts';
+import { claimReward, listRewards } from './rewards.ts';
+import { registerSecurity } from './security.ts';
 
 /** AuthError/ConvertError codes the client caused, and the status each deserves. */
 const STATUS: Record<string, number> = {
@@ -23,6 +28,19 @@ const STATUS: Record<string, number> = {
   INSUFFICIENT_BALANCE: 409,
   NO_WALLET: 409,
   EMAIL_TAKEN: 409,
+  // Profile
+  USERNAME_TAKEN: 409,
+  USER_NOT_FOUND: 404,
+  // Promo
+  UNKNOWN_CODE: 404,
+  INACTIVE: 409,
+  EXPIRED: 410,
+  EXHAUSTED: 409,
+  ALREADY_REDEEMED: 409,
+  // Rewards
+  UNKNOWN_REWARD: 404,
+  ALREADY_CLAIMED: 409,
+  COOLDOWN: 429,
   INVALID_CREDENTIALS: 401,
   INVALID_TOKEN: 401,
   INVALID_REFRESH_TOKEN: 401,
@@ -62,6 +80,14 @@ const faucetBody = z.object({ amount: amount.optional() });
 const FAUCET_DEFAULT = 5000_0000n; // 5,000 tokens in minor units
 const FAUCET_MAX = 50_000_0000n;
 
+const profileBody = z.object({
+  displayName: z.string().optional(),
+  username: z.string().optional(),
+  avatarEmoji: z.string().optional(),
+});
+const promoBody = z.object({ code: z.string().min(1).max(64) });
+const rewardParams = z.object({ code: z.string().min(1).max(64) });
+
 const ledgerQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   // Cursor is "<iso timestamp>,<uuid>" — the sort key, so paging is stable
@@ -89,12 +115,16 @@ async function requireAuth(request: FastifyRequest) {
   request.userId = verifyAccessToken(header.slice(7)).sub;
 }
 
-export function buildApp({ logger = true } = {}): FastifyInstance {
+export async function buildApp({ logger = true } = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger });
   app.decorateRequest('userId', '');
 
+  // Helmet + CORS at the root context so they cover every route. Awaited, not
+  // encapsulated, or the security headers would only apply to a child scope.
+  await registerSecurity(app);
+
   app.setErrorHandler((error, request, reply) => {
-    const code = (error as AuthError | ConvertError).code;
+    const code = (error as { code?: unknown }).code;
     const status = typeof code === 'string' ? STATUS[code] : undefined;
     if (status) return reply.status(status).send({ error: code });
 
@@ -106,6 +136,16 @@ export function buildApp({ logger = true } = {}): FastifyInstance {
   });
 
   app.get('/health', async () => ({ ok: true }));
+
+  // Readiness: process is up AND the database answers. Deploys gate traffic on this.
+  app.get('/ready', async (_req, reply) => {
+    try {
+      await db.execute(sql`select 1`);
+      return { ready: true };
+    } catch {
+      return reply.status(503).send({ ready: false });
+    }
+  });
 
   app.register(async (auth) => {
     // Credential endpoints are the ones worth throttling; the rest sit behind a
@@ -161,6 +201,21 @@ export function buildApp({ logger = true } = {}): FastifyInstance {
     return grantTokens(req.userId, grant);
   });
 
+  // ---------------------------------------------------------------- profile
+  app.get('/me', { preHandler: requireAuth }, (req) => getProfile(req.userId));
+  app.patch('/me', { preHandler: requireAuth }, (req) =>
+    updateProfile(req.userId, parse(profileBody, req.body ?? {})),
+  );
+
+  // ------------------------------------------------------------ promo & rewards
+  app.post('/promo/redeem', { preHandler: requireAuth }, (req) =>
+    redeemPromo(req.userId, parse(promoBody, req.body ?? {}).code),
+  );
+  app.get('/rewards', { preHandler: requireAuth }, (req) => listRewards(req.userId));
+  app.post('/rewards/:code/claim', { preHandler: requireAuth }, (req) =>
+    claimReward(req.userId, parse(rewardParams, req.params).code),
+  );
+
   app.get('/transactions', { preHandler: requireAuth }, async (req) => {
     const { limit, cursor } = parse(ledgerQuery, req.query);
 
@@ -193,6 +248,10 @@ export function buildApp({ logger = true } = {}): FastifyInstance {
         rows.length > limit && last ? `${last.createdAt.toISOString()},${last.id}` : null,
     };
   });
+
+  // Multiplayer blackjack: HTTP commands + the /ws/blackjack socket. Registers
+  // its own scoped auth and error handler, so it goes on last.
+  await registerBlackjack(app);
 
   return app;
 }

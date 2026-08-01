@@ -66,6 +66,38 @@ export default function PlayLobbyScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Online</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Online Blackjack"
+          onPress={() => router.push('/play/online-blackjack' as any)}
+          style={styles.onlineCard}>
+          <View style={[styles.onlineIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="people" size={22} color={colors.accent} />
+          </View>
+          <View style={styles.onlineText}>
+            <Text style={styles.onlineTitle}>Online Blackjack</Text>
+            <Text style={styles.onlineSubtitle}>Live tables against real players</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Rewards and promo codes"
+          onPress={() => router.push('/play/rewards' as any)}
+          style={styles.onlineCard}>
+          <View style={[styles.onlineIcon, { backgroundColor: '#E4F6EE' }]}>
+            <Ionicons name="gift" size={22} color={colors.positive} />
+          </View>
+          <View style={styles.onlineText}>
+            <Text style={styles.onlineTitle}>Rewards & promo codes</Text>
+            <Text style={styles.onlineSubtitle}>Claim rewards or redeem a code</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>All games</Text>
         <View style={{ gap: space.md }}>
           {rest.map((game) => (
@@ -147,6 +179,27 @@ const styles = StyleSheet.create({
 
   section: { gap: space.md },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, letterSpacing: 0.4 },
+
+  onlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.lg,
+  },
+  onlineIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineText: { flex: 1 },
+  onlineTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  onlineSubtitle: { marginTop: 2, fontSize: 13, color: colors.muted },
 
   historyCard: {
     backgroundColor: colors.surface,
