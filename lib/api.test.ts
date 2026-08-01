@@ -10,6 +10,9 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: async (k: string) => void mockStore.delete(k),
 }));
 
+// Loaded with require, not import: it must resolve after jest.mock above,
+// and an ESM import would be hoisted past it.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { ApiError, apiFetch, setSignedOutHandler } = require('./api') as typeof import('./api');
 
 const json = (status: number, body: unknown) =>

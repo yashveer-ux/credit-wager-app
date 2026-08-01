@@ -88,12 +88,19 @@ export const wallets = pgTable(
 
 export const games = pgTable('games', {
   id: uuid('id').primaryKey().defaultRandom(),
+  /** Stable client-facing identifier, e.g. `blackjack`. Used in route params. */
+  code: text('code').notNull().unique(),
   name: text('name').notNull(),
   houseEdgePct: numeric('house_edge_pct', { precision: 6, scale: 4 }).notNull(),
   minWager: money('min_wager').notNull(),
   maxWager: money('max_wager').notNull(),
 });
 
+/**
+ * A round is opened when the wager is placed and closed when it settles, so
+ * `outcome` and `payoutAmount` are null in between. A round that never settles
+ * — the app was killed mid-play — stays open, and its WAGER row stands.
+ */
 export const gameRounds = pgTable('game_rounds', {
   id: uuid('id').primaryKey().defaultRandom(),
   gameId: uuid('game_id')
@@ -106,9 +113,15 @@ export const gameRounds = pgTable('game_rounds', {
     .notNull()
     .references(() => creditTypes.id),
   wagerAmount: money('wager_amount').notNull(),
-  outcome: text('outcome', { enum: ['WIN', 'LOSS'] }).notNull(),
-  payoutAmount: money('payout_amount').notNull(),
-  rngSeed: text('rng_seed').notNull(),
+  // PUSH is a blackjack tie: the stake comes back, nobody wins.
+  outcome: text('outcome', { enum: ['WIN', 'LOSS', 'PUSH'] }),
+  payoutAmount: money('payout_amount'),
+  /**
+   * Nullable because this prototype settles from client-reported results, so
+   * there is no server-side seed to record. See src/games.ts.
+   */
+  rngSeed: text('rng_seed'),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

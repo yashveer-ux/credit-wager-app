@@ -7,6 +7,7 @@ import GameScreenHeader from '../../components/play/GameScreenHeader';
 import ResultModal, { type ResultOutcome } from '../../components/play/ResultModal';
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
+import { beginRound, endRound } from '../../lib/play/sync';
 import { crashIntensity, displayedMultiplierAtElapsed } from '../../lib/play/crashCurve';
 import { formatMultiplier } from '../../lib/play/format';
 import { getGame } from '../../lib/play/games';
@@ -69,6 +70,8 @@ export default function CrashScreen() {
   function startRound() {
     if (roundActive || !wagerValid) return;
     applyBalanceDelta(-wager);
+    // Mirror the stake to the ledger; the local balance above stays authoritative for the UI.
+    beginRound('crash', wager);
     settledRef.current = false;
     crashPointRef.current = generateCrashMultiplier();
     startTimeRef.current = nowMs();
@@ -96,6 +99,7 @@ export default function CrashScreen() {
     stopTimer();
     setPhase('crashed');
     const balanceAfter = applyBalanceDelta(0);
+    endRound({ outcome: 'LOSS', payout: 0 });
     recordRound({
       gameId: 'crash',
       label: `Crashed at ${formatMultiplier(crashPoint)}`,
@@ -122,6 +126,7 @@ export default function CrashScreen() {
     setPhase('cashed');
     const payout = crashPayout(wager, locked);
     const balanceAfter = applyBalanceDelta(payout);
+    endRound({ outcome: 'WIN', payout });
     recordRound({
       gameId: 'crash',
       label: `Cashed out at ${formatMultiplier(locked)}`,

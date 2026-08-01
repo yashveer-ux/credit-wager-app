@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import GameCard from '../../components/play/GameCard';
 import { formatRelativeTime } from '../../lib/format';
-import { resetBalance, useBalance } from '../../lib/play/balanceStore';
+import { topUpBalance, useBalance } from '../../lib/play/balanceStore';
+import { claimFaucet } from '../../lib/play/sync';
 import { formatSignedTokens, formatTokens } from '../../lib/play/format';
 import { FEATURED_GAME_ID, GAMES, getGame } from '../../lib/play/games';
 import { usePlayHistory } from '../../lib/play/historyStore';
@@ -31,7 +32,9 @@ export default function PlayLobbyScreen() {
       return;
     }
     if (resetTimer.current) clearTimeout(resetTimer.current);
-    resetBalance();
+    // Credit locally for an instant balance, and queue the matching grant so
+    // the ledger agrees.
+    claimFaucet(topUpBalance());
     setConfirmingReset(false);
   };
 
@@ -46,7 +49,7 @@ export default function PlayLobbyScreen() {
         <Text style={styles.title}>Play</Text>
         <Pressable onPress={onResetPress} hitSlop={8}>
           <Text style={[styles.resetLink, confirmingReset && styles.resetLinkConfirm]}>
-            {confirmingReset ? 'Tap again to confirm' : 'Reset balance'}
+            {confirmingReset ? 'Tap again to confirm' : 'Top up +5,000'}
           </Text>
         </Pressable>
       </View>

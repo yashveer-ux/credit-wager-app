@@ -9,6 +9,7 @@ import GameScreenHeader from '../../components/play/GameScreenHeader';
 import ResultModal, { type ResultOutcome } from '../../components/play/ResultModal';
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
+import { beginRound, endRound } from '../../lib/play/sync';
 import { formatMultiplier } from '../../lib/play/format';
 import { getGame } from '../../lib/play/games';
 import { haptics } from '../../lib/play/haptics';
@@ -53,6 +54,8 @@ export default function ChambersScreen() {
   function startRound() {
     if (roundActive || !wagerValid) return;
     applyBalanceDelta(-wager);
+    // Mirror the stake to the ledger; the local balance above stays authoritative for the UI.
+    beginRound('chambers', wager);
     settledRef.current = false;
     setLosingIndex(Math.floor(Math.random() * CHAMBERS_TOTAL));
     setOpened(new Set());
@@ -69,6 +72,7 @@ export default function ChambersScreen() {
     setSettling(true);
     setPhase('settled');
     const balanceAfter = applyBalanceDelta(0);
+    endRound({ outcome: 'LOSS', payout: 0 });
     recordRound({
       gameId: 'chambers',
       label: `Hit the live chamber on pick ${opened.size + 1}`,
@@ -93,6 +97,7 @@ export default function ChambersScreen() {
     setPhase('settled');
     const payout = chambersPayout(wager, finalSafeCount);
     const balanceAfter = applyBalanceDelta(payout);
+    endRound({ outcome: 'WIN', payout });
     recordRound({
       gameId: 'chambers',
       label: `Cashed out after ${finalSafeCount} safe chamber${finalSafeCount === 1 ? '' : 's'}`,

@@ -102,7 +102,9 @@ export async function convert(input: ConvertInput): Promise<ConvertResult> {
       cashValue: formatAmount(cash),
     };
 
-    const [fromBalance, toBalance] = await postEntries(tx, [
+    // Non-null: postEntries only returns null for caller-supplied ids it
+    // skipped as duplicates, and conversion supplies none.
+    const [fromBalance, toBalance] = (await postEntries(tx, [
       {
         userId,
         creditTypeId: fromCreditTypeId,
@@ -111,7 +113,7 @@ export async function convert(input: ConvertInput): Promise<ConvertResult> {
         metadata,
       },
       { userId, creditTypeId: toCreditTypeId, type: 'CONVERSION_IN', amount: to, metadata },
-    ]);
+    ])) as [string, string];
 
     return {
       from: { creditTypeId: fromCreditTypeId, amount: formatAmount(-amount), balance: fromBalance },

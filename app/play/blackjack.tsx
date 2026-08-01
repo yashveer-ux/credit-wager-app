@@ -8,6 +8,7 @@ import { GhostButton, PrimaryButton } from '../../components/play/Buttons';
 import ResultModal, { type ResultOutcome } from '../../components/play/ResultModal';
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
+import { addStake, beginRound, endRound } from '../../lib/play/sync';
 import {
   RED_SUITS,
   SUIT_SYMBOL,
@@ -137,6 +138,10 @@ export default function BlackjackScreen() {
     const payoutOutcome = payoutOutcomeForResult(outcomeResult);
     const payout = blackjackPayout(effectiveWager, payoutOutcome);
     const balanceAfter = applyBalanceDelta(payout);
+    endRound({
+      outcome: payoutOutcome === 'push' ? 'PUSH' : payout > 0 ? 'WIN' : 'LOSS',
+      payout,
+    });
     const { title, subtitle, label } = describeResult(outcomeResult, playerFinal, dealerFinal);
 
     recordRound({
@@ -171,6 +176,7 @@ export default function BlackjackScreen() {
     settledRef.current = false;
     setIsBusy(true);
     applyBalanceDelta(-wager);
+    beginRound('blackjack', wager);
     effectiveWagerRef.current = wager;
 
     if (shoeRef.current.length < 15) shoeRef.current = createShoe();
@@ -223,6 +229,8 @@ export default function BlackjackScreen() {
     haptics.tap();
     setIsBusy(true);
     applyBalanceDelta(-wager);
+    // Second stake on the same hand, not a retry of the opening bet.
+    addStake('blackjack', wager);
     effectiveWagerRef.current = wager * 2;
 
     const next = [...playerCards, drawCard()];

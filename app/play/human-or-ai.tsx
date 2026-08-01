@@ -9,6 +9,7 @@ import ResultModal, { type ResultOutcome } from '../../components/play/ResultMod
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
+import { beginRound, endRound } from '../../lib/play/sync';
 import { type TuringBetItem, TURING_BET_CONTENT } from '../../lib/play/content';
 import { getGame } from '../../lib/play/games';
 import { formatMultiplier, formatTokens } from '../../lib/play/format';
@@ -70,6 +71,8 @@ export default function HumanOrAiScreen() {
   function startRun() {
     if (!wagerValid) return;
     applyBalanceDelta(-wager);
+    // Mirror the stake to the ledger; the local balance above stays authoritative for the UI.
+    beginRound('human-or-ai', wager);
     settledRef.current = false;
     answeredRef.current = false;
     setQueue(shuffle(TURING_BET_CONTENT).slice(0, TOTAL_ROUNDS));
@@ -86,6 +89,7 @@ export default function HumanOrAiScreen() {
     settledRef.current = true;
     const payout = turingBetPayout(wager, finalCorrectCount);
     const balanceAfter = applyBalanceDelta(payout);
+    endRound({ outcome: payout > 0 ? 'WIN' : 'LOSS', payout });
     recordRound({
       gameId: 'human-or-ai',
       label:

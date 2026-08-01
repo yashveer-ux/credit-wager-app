@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { AuthError, login, logout, refresh, register, verifyAccessToken } from './auth/index.ts';
 import { ConvertError, convert } from './convert.ts';
 import { creditTypes, db, transactions, wallets } from './db/index.ts';
+import { GameError, grantTokens, placeWager, settleRound } from './games.ts';
 import { parseAmount } from './money.ts';
 
 /** AuthError/ConvertError codes the client caused, and the status each deserves. */
@@ -15,6 +16,10 @@ const STATUS: Record<string, number> = {
   SAME_CREDIT_TYPE: 400,
   AMOUNT_TOO_SMALL: 400,
   UNKNOWN_CREDIT_TYPE: 400,
+  INVALID_OUTCOME: 400,
+  UNKNOWN_GAME: 404,
+  UNKNOWN_ROUND: 404,
+  ROUND_SETTLED: 409,
   INSUFFICIENT_BALANCE: 409,
   NO_WALLET: 409,
   EMAIL_TAKEN: 409,
@@ -44,6 +49,19 @@ const convertBody = z.object({
   toCreditTypeId: uuid,
   amount,
 });
+// stakeId, not roundId, is the idempotency key: blackjack's double down stakes
+// the same round twice and must not look like a retry.
+const wagerBody = z.object({ roundId: uuid, stakeId: uuid, amount });
+const settleBody = z.object({
+  outcome: z.enum(['WIN', 'LOSS', 'PUSH']),
+  payout: amount,
+  label: z.string().max(120).optional(),
+});
+// Capped so a tampered client cannot grant itself an arbitrary pile.
+const faucetBody = z.object({ amount: amount.optional() });
+const FAUCET_DEFAULT = 5000_0000n; // 5,000 tokens in minor units
+const FAUCET_MAX = 50_000_0000n;
+
 const ledgerQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   // Cursor is "<iso timestamp>,<uuid>" — the sort key, so paging is stable
@@ -122,6 +140,26 @@ export function buildApp({ logger = true } = {}): FastifyInstance {
   app.post('/convert', { preHandler: requireAuth }, (req) =>
     convert({ userId: req.userId, ...parse(convertBody, req.body) }),
   );
+
+  // Games settle from client-reported results — see the note atop games.ts.
+  app.post('/games/:code/wager', { preHandler: requireAuth }, (req) => {
+    const { code } = req.params as { code: string };
+    const { roundId, stakeId, amount } = parse(wagerBody, req.body);
+    return placeWager({ userId: req.userId, gameCode: code, roundId, stakeId, amount });
+  });
+
+  app.post('/games/rounds/:roundId/settle', { preHandler: requireAuth }, (req) => {
+    const { roundId } = parse(z.object({ roundId: uuid }), req.params);
+    const { outcome, payout, label } = parse(settleBody, req.body);
+    return settleRound({ userId: req.userId, roundId, outcome, payout, label });
+  });
+
+  app.post('/faucet', { preHandler: requireAuth }, (req) => {
+    const { amount } = parse(faucetBody, req.body ?? {});
+    const grant = amount ?? FAUCET_DEFAULT;
+    if (grant > FAUCET_MAX) throw new GameError('INVALID_AMOUNT', 'grant too large');
+    return grantTokens(req.userId, grant);
+  });
 
   app.get('/transactions', { preHandler: requireAuth }, async (req) => {
     const { limit, cursor } = parse(ledgerQuery, req.query);
