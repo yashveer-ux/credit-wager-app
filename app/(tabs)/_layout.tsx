@@ -39,10 +39,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="rewards"
+        options={{
+          title: 'Rewards',
+          tabBarIcon: ({ color, size }) => <Ionicons name="gift" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => <Ionicons name="receipt" size={size} color={color} />,
+          // Still a fully working route (reachable from the profile sheet),
+          // just no longer shown in the tab bar itself.
+          href: null,
         }}
       />
     </Tabs>

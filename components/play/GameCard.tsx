@@ -1,7 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import GameIcon from '../home/GameIcon';
 import { formatTokens } from '../../lib/play/format';
 import { RISK_LABEL } from '../../lib/play/games';
 import type { GameMeta } from '../../lib/play/types';
@@ -41,11 +41,7 @@ export default function GameCard({
         style={[styles.card, featured && styles.cardFeatured]}>
         <View style={styles.topRow}>
           <View style={[styles.iconWrap, { backgroundColor: game.accentSoft }]}>
-            <Ionicons
-              name={game.icon as keyof typeof Ionicons.glyphMap}
-              size={featured ? 26 : 22}
-              color={game.accent}
-            />
+            <GameIcon gameId={game.id} size={featured ? 30 : 26} />
           </View>
           {featured ? <Chip label="Featured" tone="accent" /> : null}
         </View>

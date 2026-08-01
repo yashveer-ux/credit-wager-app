@@ -1,27 +1,17 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { formatAmount } from '../../lib/format';
+import FeaturedChallenges from '../../components/home/FeaturedChallenges';
+import GameIcon from '../../components/home/GameIcon';
+import HomeHeader from '../../components/home/HomeHeader';
 import { fetchHome, type HomeData } from '../../lib/mock';
-import { useBalance } from '../../lib/play/balanceStore';
-import { formatTokens } from '../../lib/play/format';
-import { GAMES, getGame } from '../../lib/play/games';
+import { GAMES } from '../../lib/play/games';
 import { usePlayHistory } from '../../lib/play/historyStore';
-import type { GameMeta } from '../../lib/play/types';
 import { colors, radius, space } from '../../lib/theme';
 
-const FEATURED_CHALLENGE_IDS = ['human-or-ai', 'crash'] as const;
 const DAILY_GOAL = 3;
 const DAILY_REWARD_LABEL = '+250';
 
@@ -30,7 +20,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { balance: tokenBalance } = useBalance();
   const history = usePlayHistory();
 
   useEffect(() => {
@@ -63,42 +52,7 @@ export default function HomeScreen() {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />
       }>
-      <View style={styles.headerRow}>
-        {data ? (
-          <Text style={styles.greeting}>Hi, {data.displayName} 👋</Text>
-        ) : (
-          <Skeleton width={140} height={26} />
-        )}
-
-        <View style={styles.headerRight}>
-          {data ? (
-            <View style={styles.headerBalance}>
-              <Ionicons name="wallet" size={13} color={colors.accent} />
-              <Text style={styles.headerBalanceText} numberOfLines={1}>
-                {formatAmount(data.cashBalance, 'SIM_CASH')}
-              </Text>
-            </View>
-          ) : (
-            <Skeleton width={88} height={30} radius={radius.sm} />
-          )}
-          <Avatar />
-        </View>
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="AI Credits"
-        onPress={() => router.push('/play')}
-        style={({ pressed }) => [styles.creditsCard, pressed && styles.pressed]}>
-        <View style={styles.creditsIcon}>
-          <Ionicons name="hardware-chip" size={20} color={colors.accent} />
-        </View>
-        <View style={styles.creditsText}>
-          <Text style={styles.creditsLabel}>AI Credits</Text>
-          <Text style={styles.creditsValue}>{formatTokens(tokenBalance)}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-      </Pressable>
+      <HomeHeader displayName={data?.displayName ?? null} />
 
       <View style={styles.actions}>
         <QuickAction
@@ -129,11 +83,7 @@ export default function HomeScreen() {
               onPress={() => router.push(game.route as any)}
               style={({ pressed }) => [styles.gameTile, pressed && styles.pressed]}>
               <View style={[styles.gameIcon, { backgroundColor: game.accentSoft }]}>
-                <Ionicons
-                  name={game.icon as keyof typeof Ionicons.glyphMap}
-                  size={26}
-                  color={game.accent}
-                />
+                <GameIcon gameId={game.id} size={38} />
               </View>
               <Text style={styles.gameLabel} numberOfLines={2}>
                 {game.name}
@@ -143,26 +93,7 @@ export default function HomeScreen() {
         </ScrollView>
       </Section>
 
-      <Section title="Featured Challenges" onViewAll={() => router.push('/play')}>
-        <View style={styles.challengeRow}>
-          {FEATURED_CHALLENGE_IDS.map((id) => {
-            const game = getGame(id)!;
-            return game.id === 'crash' ? (
-              <DarkChallengeCard
-                key={id}
-                game={game}
-                onPress={() => router.push(game.route as any)}
-              />
-            ) : (
-              <LightChallengeCard
-                key={id}
-                game={game}
-                onPress={() => router.push(game.route as any)}
-              />
-            );
-          })}
-        </View>
-      </Section>
+      <FeaturedChallenges />
 
       <Pressable
         accessibilityRole="button"
@@ -182,10 +113,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.dailyTrack}>
             <View
-              style={[
-                styles.dailyFill,
-                { width: `${(dailyProgress / DAILY_GOAL) * 100}%` },
-              ]}
+              style={[styles.dailyFill, { width: `${(dailyProgress / DAILY_GOAL) * 100}%` }]}
             />
           </View>
         </View>
@@ -196,14 +124,6 @@ export default function HomeScreen() {
         </View>
       </Pressable>
     </ScrollView>
-  );
-}
-
-function Avatar() {
-  return (
-    <View style={styles.avatar}>
-      <Ionicons name="person" size={19} color={colors.muted} />
-    </View>
   );
 }
 
@@ -282,140 +202,9 @@ function Section({
   );
 }
 
-function LightChallengeCard({ game, onPress }: { game: GameMeta; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={game.name}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.challengeCard,
-        styles.challengeCardLight,
-        pressed && styles.pressed,
-      ]}>
-      <View style={[styles.challengeThumb, { backgroundColor: game.accentSoft }]}>
-        <Ionicons
-          name={game.icon as keyof typeof Ionicons.glyphMap}
-          size={28}
-          color={game.accent}
-        />
-      </View>
-      <Text style={styles.challengeTitle}>{game.name}</Text>
-      <Text style={styles.challengeBody} numberOfLines={2}>
-        {game.description}
-      </Text>
-      <View style={styles.challengeFooterRow}>
-        <View style={[styles.challengeBadge, { backgroundColor: game.accentSoft }]}>
-          <Text style={[styles.challengeBadgeText, { color: game.accent }]}>
-            Up to {game.maxMultiplierLabel}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-      </View>
-    </Pressable>
-  );
-}
-
-function DarkChallengeCard({ game, onPress }: { game: GameMeta; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={game.name}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.challengeCard,
-        styles.challengeCardDark,
-        pressed && styles.pressed,
-      ]}>
-      <Ionicons
-        name={game.icon as keyof typeof Ionicons.glyphMap}
-        size={76}
-        color="rgba(255,255,255,0.10)"
-        style={styles.challengeDarkGlyph}
-      />
-      <Text style={styles.challengeTitleDark}>{game.name}</Text>
-      <Text style={styles.challengeBodyDark}>{game.tagline}</Text>
-      <View style={styles.challengeDarkDivider} />
-      <Text style={styles.challengeStatDark}>
-        Up to {game.maxMultiplierLabel} · min {formatTokens(game.minWager)}
-      </Text>
-    </Pressable>
-  );
-}
-
-function Skeleton({
-  width,
-  height,
-  radius: r = radius.sm,
-  style,
-}: {
-  width: number;
-  height: number;
-  radius?: number;
-  style?: ViewStyle;
-}) {
-  return (
-    <View
-      style={[{ width, height, borderRadius: r, backgroundColor: colors.skeleton }, style]}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.lg, gap: space.lg },
-
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  greeting: { fontSize: 22, fontWeight: '700', color: colors.text, flexShrink: 1 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
-  headerBalance: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm - 2,
-  },
-  headerBalanceText: { fontSize: 14, fontWeight: '700', color: colors.text, fontVariant: ['tabular-nums'] },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.skeleton,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  creditsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.lg,
-  },
-  creditsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accentSoft,
-  },
-  creditsText: { flex: 1 },
-  creditsLabel: { fontSize: 12, fontWeight: '600', color: colors.muted },
-  creditsValue: {
-    marginTop: 2,
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    fontVariant: ['tabular-nums'],
-  },
 
   actions: { flexDirection: 'row', gap: space.md },
   action: {
@@ -470,47 +259,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     minHeight: 28,
   },
-
-  challengeRow: { flexDirection: 'row', gap: space.md },
-  challengeCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    padding: space.lg,
-    gap: space.xs + 2,
-    minHeight: 176,
-  },
-  challengeCardLight: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  challengeThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  challengeTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: space.xs },
-  challengeBody: { fontSize: 12, color: colors.muted, lineHeight: 16, flex: 1 },
-  challengeFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  challengeBadge: { paddingHorizontal: space.sm + 2, paddingVertical: 4, borderRadius: radius.sm },
-  challengeBadgeText: { fontSize: 11, fontWeight: '700' },
-
-  challengeCardDark: {
-    backgroundColor: colors.text,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
-  challengeDarkGlyph: { position: 'absolute', right: -10, bottom: -10 },
-  challengeTitleDark: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  challengeBodyDark: { fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 16 },
-  challengeDarkDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    marginVertical: space.xs + 2,
-  },
-  challengeStatDark: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
 
   dailyCard: {
     flexDirection: 'row',
