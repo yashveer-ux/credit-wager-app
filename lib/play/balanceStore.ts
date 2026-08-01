@@ -84,6 +84,18 @@ export function resetBalance(): void {
   void persist();
 }
 
+export const TOP_UP_AMOUNT = 5000;
+
+/**
+ * Grants demo tokens. A delta rather than an absolute reset, because the server
+ * mirror only knows how to grant — there is no un-grant, so setting the balance
+ * to a fixed number would drift the two apart whenever it went down.
+ */
+export function topUpBalance(): number {
+  applyBalanceDelta(TOP_UP_AMOUNT);
+  return TOP_UP_AMOUNT;
+}
+
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }

@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import GameCard from '../../components/play/GameCard';
 import { formatRelativeTime } from '../../lib/format';
-import { resetBalance, useBalance } from '../../lib/play/balanceStore';
+import { topUpBalance, useBalance } from '../../lib/play/balanceStore';
+import { claimFaucet } from '../../lib/play/sync';
 import { formatSignedTokens, formatTokens } from '../../lib/play/format';
 import { FEATURED_GAME_ID, GAMES, getGame } from '../../lib/play/games';
 import { usePlayHistory } from '../../lib/play/historyStore';
@@ -31,7 +32,9 @@ export default function PlayLobbyScreen() {
       return;
     }
     if (resetTimer.current) clearTimeout(resetTimer.current);
-    resetBalance();
+    // Credit locally for an instant balance, and queue the matching grant so
+    // the ledger agrees.
+    claimFaucet(topUpBalance());
     setConfirmingReset(false);
   };
 
@@ -46,7 +49,7 @@ export default function PlayLobbyScreen() {
         <Text style={styles.title}>Play</Text>
         <Pressable onPress={onResetPress} hitSlop={8}>
           <Text style={[styles.resetLink, confirmingReset && styles.resetLinkConfirm]}>
-            {confirmingReset ? 'Tap again to confirm' : 'Reset balance'}
+            {confirmingReset ? 'Tap again to confirm' : 'Top up +5,000'}
           </Text>
         </Pressable>
       </View>
@@ -60,6 +63,38 @@ export default function PlayLobbyScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Featured</Text>
         <GameCard game={featured} featured onPress={() => router.push(featured.route as any)} />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Online</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Online Blackjack"
+          onPress={() => router.push('/play/online-blackjack' as any)}
+          style={styles.onlineCard}>
+          <View style={[styles.onlineIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="people" size={22} color={colors.accent} />
+          </View>
+          <View style={styles.onlineText}>
+            <Text style={styles.onlineTitle}>Online Blackjack</Text>
+            <Text style={styles.onlineSubtitle}>Live tables against real players</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Rewards and promo codes"
+          onPress={() => router.push('/play/rewards' as any)}
+          style={styles.onlineCard}>
+          <View style={[styles.onlineIcon, { backgroundColor: '#E4F6EE' }]}>
+            <Ionicons name="gift" size={22} color={colors.positive} />
+          </View>
+          <View style={styles.onlineText}>
+            <Text style={styles.onlineTitle}>Rewards & promo codes</Text>
+            <Text style={styles.onlineSubtitle}>Claim rewards or redeem a code</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -144,6 +179,27 @@ const styles = StyleSheet.create({
 
   section: { gap: space.md },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, letterSpacing: 0.4 },
+
+  onlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.lg,
+  },
+  onlineIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineText: { flex: 1 },
+  onlineTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  onlineSubtitle: { marginTop: 2, fontSize: 13, color: colors.muted },
 
   historyCard: {
     backgroundColor: colors.surface,

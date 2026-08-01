@@ -17,6 +17,7 @@ import { PrimaryButton } from '../../components/play/Buttons';
 import ResultModal, { type ResultOutcome } from '../../components/play/ResultModal';
 import WagerBar, { isValidWager } from '../../components/play/WagerBar';
 import { applyBalanceDelta, canAfford, useBalance } from '../../lib/play/balanceStore';
+import { beginRound, endRound } from '../../lib/play/sync';
 import { getGame } from '../../lib/play/games';
 import { haptics } from '../../lib/play/haptics';
 import { recordRound } from '../../lib/play/historyStore';
@@ -149,6 +150,8 @@ export default function RouletteScreen() {
     setSpinResult(null);
     setPhase('spinning');
     applyBalanceDelta(-wager);
+    // Mirror the stake to the ledger; the local balance above stays authoritative for the UI.
+    beginRound('roulette', wager);
     const effectiveWager = wager;
 
     const outcome = spin();
@@ -187,6 +190,7 @@ export default function RouletteScreen() {
     const won = resolveBet(activeBet, outcome);
     const payout = roulettePayout(effectiveWager, activeBet.type, won);
     const balanceAfter = applyBalanceDelta(payout);
+    endRound({ outcome: payout > 0 ? 'WIN' : 'LOSS', payout });
 
     recordRound({
       gameId: 'roulette',
